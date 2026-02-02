@@ -28,11 +28,9 @@
 
       <section class="screen screen--game" id="gameScreen" aria-hidden="true">
         <canvas id="gameCanvas" width="360" height="360" aria-label="Snake game" role="img"></canvas>
-        <div class="dpad" aria-label="Directional controls">
-          <button class="dpad__button dpad__up" data-direction="up" aria-label="Move up">▲</button>
-          <button class="dpad__button dpad__left" data-direction="left" aria-label="Move left">◀</button>
-          <button class="dpad__button dpad__right" data-direction="right" aria-label="Move right">▶</button>
-          <button class="dpad__button dpad__down" data-direction="down" aria-label="Move down">▼</button>
+        <div class="joystick" id="joystick" aria-label="Virtual joystick">
+          <div class="joystick__base"></div>
+          <div class="joystick__thumb" id="joystickThumb"></div>
         </div>
       </section>
 

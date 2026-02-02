@@ -1,26 +1,12 @@
 :root {
   color-scheme: only light;
   font-family: "Inter", "Segoe UI", system-ui, sans-serif;
-  --bg: #d6dde6;
-  --panel: #e7eef4;
-  --text: #1a2233;
-  --muted: #5a6a7e;
-  --border: rgba(0, 0, 0, 0.08);
-  --primary: #6aa8ff;
-  --primary2: #4f86ff;
-  --shadow: 0 14px 34px rgba(15, 23, 42, 0.18);
+  background: #f5f7fb;
+  color: #1b1e2b;
 }
 
 * {
   box-sizing: border-box;
-}
-
-html,
-body {
-  background:
-    radial-gradient(900px 500px at 50% -200px, rgba(106, 168, 255, 0.2), transparent 60%),
-    var(--bg);
-  color: var(--text);
 }
 
 body {
@@ -29,6 +15,7 @@ body {
   display: flex;
   justify-content: center;
   align-items: stretch;
+  background: #f5f7fb;
 }
 
 .app {
@@ -38,9 +25,6 @@ body {
   flex-direction: column;
   padding: 24px 20px 32px;
   gap: 16px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 55%), var(--panel);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow);
 }
 
 .top-bar {
@@ -60,9 +44,8 @@ body {
   gap: 8px;
   padding: 8px 14px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid var(--border);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  background: #ffffff;
+  box-shadow: 0 6px 16px rgba(45, 55, 72, 0.08);
   font-size: 0.9rem;
 }
 
@@ -80,10 +63,10 @@ body {
 .screen {
   width: 100%;
   height: 100%;
-  background: var(--panel);
+  background: #ffffff;
   border-radius: 24px;
   padding: 24px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 16px 40px rgba(45, 55, 72, 0.12);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -105,8 +88,7 @@ body {
 }
 
 .screen--game {
-  justify-content: flex-start;
-  gap: 16px;
+  justify-content: space-between;
 }
 
 .screen h1,
@@ -117,7 +99,7 @@ body {
 
 .screen p {
   margin: 0;
-  color: var(--muted);
+  color: #5c6278;
   line-height: 1.4;
 }
 
@@ -143,15 +125,14 @@ button:active {
 }
 
 .primary {
-  background: linear-gradient(180deg, var(--primary), var(--primary2));
-  color: #06101f;
-  box-shadow: 0 8px 18px rgba(79, 134, 255, 0.35);
+  background: #5f6bf5;
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(95, 107, 245, 0.35);
 }
 
 .ghost {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid var(--border);
-  color: var(--text);
+  background: #eef0ff;
+  color: #3d46b2;
 }
 
 #gameCanvas {
@@ -159,52 +140,35 @@ button:active {
   max-width: 360px;
   aspect-ratio: 1;
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--border);
+  background: #f3f5ff;
   display: block;
-  margin-top: 8px;
 }
 
-.dpad {
-  display: grid;
-  grid-template-columns: repeat(3, 64px);
-  grid-template-rows: repeat(3, 64px);
-  gap: 12px;
-  margin-top: 12px;
+.joystick {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  touch-action: none;
 }
 
-.dpad__button {
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.6);
-  border: 1px solid var(--border);
-  font-size: 1.4rem;
-  font-weight: 700;
-  color: var(--text);
-  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.12);
+.joystick__base {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, #dde1ff 0%, #cfd5ff 100%);
+  border-radius: 50%;
+  opacity: 0.9;
 }
 
-.dpad__button:active {
-  transform: translateY(2px) scale(0.98);
-}
-
-.dpad__up {
-  grid-column: 2;
-  grid-row: 1;
-}
-
-.dpad__left {
-  grid-column: 1;
-  grid-row: 2;
-}
-
-.dpad__right {
-  grid-column: 3;
-  grid-row: 2;
-}
-
-.dpad__down {
-  grid-column: 2;
-  grid-row: 3;
+.joystick__thumb {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  left: 40px;
+  top: 40px;
+  background: #5f6bf5;
+  border-radius: 50%;
+  box-shadow: 0 8px 18px rgba(95, 107, 245, 0.35);
+  transform: translate(0, 0);
 }
 
 .final-score {
