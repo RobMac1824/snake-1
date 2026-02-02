@@ -124,30 +124,8 @@ function startGame(state = defaultState()) {
   if (rafId) {
     cancelAnimationFrame(rafId);
   }
-  const baseState = defaultState();
-  const mergedState = {
-    ...baseState,
-    ...state,
-  };
-  if (!mergedState.direction || (mergedState.direction.x === 0 && mergedState.direction.y === 0)) {
-    mergedState.direction = baseState.direction;
-  }
-  if (
-    !mergedState.queuedDirection ||
-    (mergedState.queuedDirection.x === 0 && mergedState.queuedDirection.y === 0)
-  ) {
-    mergedState.queuedDirection = mergedState.direction;
-  }
-  if (!mergedState.food) {
-    mergedState.food = placeFood(mergedState.snake);
-  } else if (mergedState.snake?.some((segment) => positionsEqual(segment, mergedState.food))) {
-    mergedState.food = placeFood(mergedState.snake);
-  }
-  if (!mergedState.foodEmoji) {
-    mergedState.foodEmoji = randomEmoji();
-  }
   gameState = {
-    ...mergedState,
+    ...state,
     running: true,
   };
   lastTime = performance.now();
@@ -199,7 +177,7 @@ function step() {
     return;
   }
 
-  const hitSelf = gameState.snake.slice(1).some((segment) => positionsEqual(segment, next));
+  const hitSelf = gameState.snake.some((segment) => positionsEqual(segment, next));
   if (hitSelf) {
     endGame();
     return;
@@ -219,9 +197,9 @@ function step() {
   saveGame();
 }
 
-function placeFood(snake = gameState.snake) {
+function placeFood() {
   let position = randomFoodPosition();
-  while (snake.some((segment) => positionsEqual(segment, position))) {
+  while (gameState.snake.some((segment) => positionsEqual(segment, position))) {
     position = randomFoodPosition();
   }
   return position;
