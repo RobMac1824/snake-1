@@ -31,7 +31,7 @@ let gameState = null;
 let rafId = null;
 let lastTime = 0;
 let accumulator = 0;
-const stepDuration = 210;
+const stepDuration = 140;
 const saveKey = "rainbow-snake-save";
 
 const defaultState = () => ({
@@ -120,71 +120,12 @@ function showScreen(screen) {
   }
 }
 
-function sanitizeStateForStart(state) {
-  let sanitizedState = state;
-  try {
-    sanitizedState = structuredClone(state);
-  } catch {
-    sanitizedState = JSON.parse(JSON.stringify(state));
-  }
-
-  const baseState = defaultState();
-  const safeState = {
-    ...baseState,
-    ...sanitizedState,
-  };
-
-  if (!Array.isArray(safeState.snake) || safeState.snake.length === 0) {
-    safeState.snake = [{ x: 5, y: 5 }];
-  }
-
-  const direction = safeState.direction ?? safeState.dir ?? { x: 0, y: 0 };
-  const dx = Number(direction.x ?? direction.dx ?? 0);
-  const dy = Number(direction.y ?? direction.dy ?? 0);
-  if ((dx === 0 && dy === 0) || Math.abs(dx) + Math.abs(dy) !== 1) {
-    safeState.direction = { x: 1, y: 0 };
-  } else {
-    safeState.direction = { x: dx, y: dy };
-  }
-
-  const queuedDirection =
-    safeState.queuedDirection ?? safeState.nextDir ?? safeState.direction;
-  const qx = Number(queuedDirection.x ?? queuedDirection.dx ?? safeState.direction.x);
-  const qy = Number(queuedDirection.y ?? queuedDirection.dy ?? safeState.direction.y);
-  if ((qx === 0 && qy === 0) || Math.abs(qx) + Math.abs(qy) !== 1) {
-    safeState.queuedDirection = safeState.direction;
-  } else {
-    safeState.queuedDirection = { x: qx, y: qy };
-  }
-
-  if (
-    !safeState.food ||
-    typeof safeState.food.x !== "number" ||
-    typeof safeState.food.y !== "number"
-  ) {
-    safeState.food = placeFood(safeState.snake);
-  } else if (safeState.snake.some((segment) => positionsEqual(segment, safeState.food))) {
-    safeState.food = placeFood(safeState.snake);
-  }
-
-  if (!safeState.foodEmoji) {
-    safeState.foodEmoji = randomEmoji();
-  }
-
-  if (typeof safeState.score !== "number" || safeState.score < 0) {
-    safeState.score = 0;
-  }
-
-  return safeState;
-}
-
 function startGame(state = defaultState()) {
   if (rafId) {
     cancelAnimationFrame(rafId);
   }
-  const mergedState = sanitizeStateForStart(state);
   gameState = {
-    ...mergedState,
+    ...state,
     running: true,
   };
   lastTime = performance.now();
@@ -236,7 +177,7 @@ function step() {
     return;
   }
 
-  const hitSelf = gameState.snake.slice(1).some((segment) => positionsEqual(segment, next));
+  const hitSelf = gameState.snake.some((segment) => positionsEqual(segment, next));
   if (hitSelf) {
     endGame();
     return;
@@ -256,9 +197,9 @@ function step() {
   saveGame();
 }
 
-function placeFood(snake = gameState.snake) {
+function placeFood() {
   let position = randomFoodPosition();
-  while (snake.some((segment) => positionsEqual(segment, position))) {
+  while (gameState.snake.some((segment) => positionsEqual(segment, position))) {
     position = randomFoodPosition();
   }
   return position;
