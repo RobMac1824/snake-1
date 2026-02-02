@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rainbow Snake</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="top-bar">
+      <div class="brand">Rainbow Snake</div>
+      <div class="scoreboard" aria-live="polite">
+        <span>Score</span>
+        <strong id="score">0</strong>
+      </div>
+    </header>
+
+    <main class="game-area">
+      <section class="screen screen--menu is-active" id="menuScreen" aria-hidden="false">
+        <h1>Ready to slither?</h1>
+        <p>Collect emoji snacks, keep the rainbow growing, and avoid crashing.</p>
+        <div class="menu-actions">
+          <button id="startButton" class="primary">Start Game</button>
+          <button id="resumeButton" class="ghost" hidden>Resume Saved Game</button>
+        </div>
+      </section>
+
+      <section class="screen screen--game" id="gameScreen" aria-hidden="true">
+        <canvas id="gameCanvas" width="360" height="360" aria-label="Snake game" role="img"></canvas>
+        <div class="dpad" aria-label="Directional controls">
+          <button class="dpad__button dpad__up" data-direction="up" aria-label="Move up">▲</button>
+          <button class="dpad__button dpad__left" data-direction="left" aria-label="Move left">◀</button>
+          <button class="dpad__button dpad__right" data-direction="right" aria-label="Move right">▶</button>
+          <button class="dpad__button dpad__down" data-direction="down" aria-label="Move down">▼</button>
+        </div>
+      </section>
+
+      <section class="screen screen--summary" id="summaryScreen" aria-hidden="true">
+        <h2>Game Over</h2>
+        <p>Your final score</p>
+        <div class="final-score" id="finalScore">0</div>
+        <div class="menu-actions">
+          <button id="restartButton" class="primary">Play Again</button>
+          <button id="menuButton" class="ghost">Main Menu</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
