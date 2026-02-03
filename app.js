@@ -30,7 +30,7 @@ let gameState = null;
 let rafId = null;
 let lastTime = 0;
 let accumulator = 0;
-const stepDuration = 315;
+const stepDuration = 315 * 0.9;
 const saveKey = "rainbow-snake-save";
 
 const defaultState = () => ({
