@@ -13,6 +13,7 @@ const menuButton = document.getElementById("menuButton");
 const soundtrackToggle = document.getElementById("soundtrackToggle");
 const soundtrackStatus = document.getElementById("soundtrackStatus");
 const dpadButtons = document.querySelectorAll(".dpad__button");
+const scoreFireworks = document.getElementById("scoreFireworks");
 
 const gridSize = 18;
 const cellSize = canvas.width / gridSize;
@@ -116,6 +117,15 @@ function clearSavedGame() {
 
 function updateScore() {
   scoreLabel.textContent = gameState.score.toString();
+}
+
+function triggerScoreFireworks() {
+  if (!scoreFireworks) {
+    return;
+  }
+  scoreFireworks.classList.remove("is-active");
+  void scoreFireworks.offsetWidth;
+  scoreFireworks.classList.add("is-active");
 }
 
 function showScreen(screen) {
@@ -260,6 +270,7 @@ function step() {
   if (positionsEqual(next, gameState.food)) {
     gameState.score += 10;
     spawnFireworks(next);
+    triggerScoreFireworks();
     gameState.food = placeFood();
     gameState.foodEmoji = randomEmoji();
   } else {
