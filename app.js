@@ -269,6 +269,20 @@ async function loadLeaderboard() {
   renderLeaderboard(data || []);
 }
 
+async function submitScoreViaSupabase(score) {
+  if (!supabaseClient) {
+    return { ok: false };
+  }
+  const { error } = await supabaseClient.rpc("upsert_high_score", {
+    p_username: leaderboardUsername,
+    p_score: score,
+  });
+  if (error) {
+    return { ok: false, message: "Unable to submit score." };
+  }
+  return { ok: true };
+}
+
 async function submitScore(score) {
   if (!leaderboardUsername) {
     openUsernameGate({ isChange: false });
@@ -278,6 +292,19 @@ async function submitScore(score) {
     return;
   }
   submitScoreStatus.textContent = "Submitting…";
+  const trySupabaseFallback = async () => {
+    const result = await submitScoreViaSupabase(score);
+    if (result.ok) {
+      submitScoreStatus.textContent = "Score locked in.";
+      loadLeaderboard();
+      return true;
+    }
+    if (result.message) {
+      submitScoreStatus.textContent = result.message;
+      return true;
+    }
+    return false;
+  };
   try {
     const response = await fetch("/api/score", {
       method: "POST",
@@ -285,13 +312,27 @@ async function submitScore(score) {
       body: JSON.stringify({ username: leaderboardUsername, score }),
     });
     if (!response.ok) {
-      const payload = await response.json().catch(() => null);
-      submitScoreStatus.textContent = payload?.error || "Unable to submit score.";
+      let payload = null;
+      let rawText = "";
+      try {
+        payload = await response.json();
+      } catch {
+        rawText = await response.text().catch(() => "");
+      }
+      if (await trySupabaseFallback()) {
+        return;
+      }
+      submitScoreStatus.textContent =
+        payload?.error ||
+        (rawText.trim().length > 0 ? rawText.trim() : "Unable to submit score.");
       return;
     }
     submitScoreStatus.textContent = "Score locked in.";
     loadLeaderboard();
   } catch {
+    if (await trySupabaseFallback()) {
+      return;
+    }
     submitScoreStatus.textContent = "Network error. Try again.";
   }
 }

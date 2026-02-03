@@ -1,11 +1,11 @@
 # Global Leaderboard Setup
 
-This project now includes a shared global leaderboard powered by Supabase. The UI lives in the existing game screen, and scores are written via a server route (`POST /api/score`) that uses the Supabase service role key.
+This project now includes a shared global leaderboard powered by Supabase. The UI lives in the existing game screen. Scores are written via a server route (`POST /api/score`) that uses the Supabase service role key, with a client-side fallback to the Supabase RPC when hosting without a server.
 
 ## Supabase setup
 
 1. Create a new Supabase project.
-2. Open the SQL editor and run `supabase/leaderboard.sql` to create the `leaderboard_scores` table, RLS policies, and the `upsert_high_score` function.
+2. Open the SQL editor and run `supabase/leaderboard.sql` to create the `leaderboard_scores` table, RLS policies, and the `upsert_high_score` function (including a security definer grant for client fallback submissions).
 3. Copy your project URL and anon key from **Project Settings → API**.
 
 ## Environment variables
@@ -18,7 +18,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ```
 
-Update `index.html` and set the client config (used for anonymous leaderboard reads):
+Update `index.html` and set the client config (used for anonymous leaderboard reads and the client fallback submission):
 
 ```html
 <script>
@@ -29,7 +29,7 @@ Update `index.html` and set the client config (used for anonymous leaderboard re
 </script>
 ```
 
-> The service role key is **server-only** and should never be exposed to the browser.
+> The service role key is **server-only** and should never be exposed to the browser. The client fallback uses the RPC function defined in `supabase/leaderboard.sql`.
 
 ## Local development
 
