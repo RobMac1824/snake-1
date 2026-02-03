@@ -283,8 +283,7 @@ async function submitScoreViaSupabase(score) {
       headers: {
         "Content-Type": "application/json",
         // use your existing anon key from your supabase client
-        apikey: SUPABASE_ANON_KEY,
-,
+        apikey: supabaseAnonKey,
       },
       body: JSON.stringify({
         username: leaderboardUsername,
@@ -307,8 +306,6 @@ async function submitScoreViaSupabase(score) {
     console.error("submitScoreViaSupabase failed", err);
     return { ok: false, message: "Unable to submit score." };
   }
-}
-
 }
 
 async function submitScore(score) {
