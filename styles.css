@@ -92,7 +92,7 @@ body::after {
   min-height: 100svh;
   display: flex;
   flex-direction: column;
-  padding: 18px 16px 14px;
+  padding: 18px 16px calc(18px + env(safe-area-inset-bottom, 0px) + 56px);
   gap: 12px;
   background: var(--panel);
   border: 1px solid rgba(86, 175, 255, 0.25);
@@ -395,6 +395,7 @@ button:disabled {
 }
 
 .controls {
+  margin-top: auto;
   padding: 10px 14px calc(12px + env(safe-area-inset-bottom, 0px));
   background: rgba(9, 12, 22, 0.9);
   border: 1px solid rgba(86, 175, 255, 0.18);
@@ -418,8 +419,8 @@ button:disabled {
 
 .dpad {
   display: grid;
-  grid-template-columns: repeat(3, clamp(64px, 18vw, 92px));
-  grid-template-rows: repeat(3, clamp(64px, 18vw, 92px));
+  grid-template-columns: repeat(3, clamp(58px, 16vw, 86px));
+  grid-template-rows: repeat(3, clamp(58px, 16vw, 86px));
   gap: 8px;
 }
 
