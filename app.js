@@ -284,6 +284,7 @@ async function submitScoreViaSupabase(score) {
         "Content-Type": "application/json",
         // use your existing anon key from your supabase client
         apikey: SUPABASE_ANON_KEY,
+,
       },
       body: JSON.stringify({
         username: leaderboardUsername,
