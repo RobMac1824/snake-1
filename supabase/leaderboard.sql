@@ -19,6 +19,8 @@ create or replace function public.upsert_high_score(
 )
 returns void
 language plpgsql
+security definer
+set search_path = public
 as $$
 begin
   insert into public.leaderboard_scores (username, high_score, updated_at)
@@ -32,3 +34,5 @@ begin
     end;
 end;
 $$;
+
+grant execute on function public.upsert_high_score(text, integer) to anon, authenticated;
