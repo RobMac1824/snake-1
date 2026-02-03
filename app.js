@@ -283,6 +283,7 @@ function showScreen(screen) {
   const isGame = screen === gameScreen;
   pauseButton.toggleAttribute("hidden", !isGame);
   pauseButton.disabled = !isGame;
+  document.body.classList.toggle("is-game-active", isGame);
   document.body.style.overflow = isGame ? "hidden" : "";
   document.body.style.touchAction = isGame ? "none" : "";
   if (screen === menuScreen) {

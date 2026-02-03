@@ -8,10 +8,9 @@
 </head>
 <body>
   <div class="app">
-    <header class="top-bar">
+    <header class="hud">
       <div class="brand-block">
         <div class="brand marquee">EMBER RUN</div>
-        <div class="brand-subline station-line">K-DUST 88.8 FM — lingo, lingo.</div>
       </div>
       <div class="top-actions">
         <div class="scoreboard" aria-live="polite">
@@ -27,7 +26,7 @@
       </div>
     </header>
 
-    <main class="game-area">
+    <main class="stage">
       <section class="screen screen--menu is-active" id="menuScreen" aria-hidden="false">
         <div class="menu-hero">
           <div class="hero-card">
@@ -64,12 +63,6 @@
       <section class="screen screen--game" id="gameScreen" aria-hidden="true">
         <canvas id="gameCanvas" width="360" height="360" aria-label="Snake game" role="img"></canvas>
         <div class="toast" id="powerToast" role="status" aria-live="polite" aria-hidden="true"></div>
-        <div class="dpad" aria-label="Directional controls">
-          <button class="dpad__button dpad__up" data-direction="up" aria-label="Move up">▲</button>
-          <button class="dpad__button dpad__left" data-direction="left" aria-label="Move left">◀</button>
-          <button class="dpad__button dpad__right" data-direction="right" aria-label="Move right">▶</button>
-          <button class="dpad__button dpad__down" data-direction="down" aria-label="Move down">▼</button>
-        </div>
         <div class="storm-overlay" id="stormOverlay" aria-hidden="true"></div>
         <div class="overlay overlay--countdown" id="countdownOverlay" aria-live="assertive" aria-hidden="true">
           <div class="overlay-card">
@@ -112,6 +105,20 @@
         </div>
       </section>
     </main>
+
+    <footer class="controls">
+      <div class="controls__pad" aria-label="Directional controls">
+        <div class="dpad">
+          <button class="dpad__button dpad__up" data-direction="up" aria-label="Move up">▲</button>
+          <button class="dpad__button dpad__left" data-direction="left" aria-label="Move left">◀</button>
+          <button class="dpad__button dpad__right" data-direction="right" aria-label="Move right">▶</button>
+          <button class="dpad__button dpad__down" data-direction="down" aria-label="Move down">▼</button>
+        </div>
+      </div>
+      <div class="controls__meta">
+        <div class="brand-subline station-line">K-DUST 88.8 FM — lingo, lingo.</div>
+      </div>
+    </footer>
   </div>
 
   <script src="app.js"></script>
