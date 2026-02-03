@@ -388,6 +388,13 @@ button:disabled {
   box-shadow: 0 0 0 1px rgba(255, 79, 216, 0.15), 0 20px 40px rgba(5, 5, 20, 0.6);
 }
 
+#joystick {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(env(safe-area-inset-bottom) + 72px);
+}
+
 .dpad {
   display: grid;
   grid-template-columns: repeat(3, 64px);
