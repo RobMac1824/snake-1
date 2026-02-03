@@ -22,7 +22,6 @@ const countdownOverlay = document.getElementById("countdownOverlay");
 const countdownText = document.getElementById("countdownText");
 const soundToggle = document.getElementById("soundToggle");
 const hapticsToggle = document.getElementById("hapticsToggle");
-const dpadButtons = document.querySelectorAll(".dpad__button");
 const scoreFireworks = document.getElementById("scoreFireworks");
 const gateChargeLabel = document.getElementById("gateCharge");
 const stormOverlay = document.getElementById("stormOverlay");
@@ -1026,15 +1025,6 @@ function bindButtons() {
     left: { x: -1, y: 0 },
     right: { x: 1, y: 0 },
   };
-
-  dpadButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-      const direction = button.dataset.direction;
-      if (direction && directionMap[direction]) {
-        applyDirection(directionMap[direction]);
-      }
-    });
-  });
 
   document.addEventListener("keydown", (event) => {
     const keyMap = {
