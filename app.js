@@ -281,12 +281,10 @@ async function submitScoreViaSupabase(score) {
 
     const res = await fetch(FUNCTION_URL, {
       method: "POST",
-     headers: {
-  "Content-Type": "application/json",
-  apikey: supabaseAnonKey,
-  Authorization: `Bearer ${supabaseAnonKey}`,
-},
-
+      headers: {
+        "Content-Type": "application/json",
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${supabaseAnonKey}`,
       },
       body: JSON.stringify({
         username: leaderboardUsername,
