@@ -15,6 +15,17 @@
   box-sizing: border-box;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
 html,
 body {
   background:
@@ -259,6 +270,22 @@ button:active {
   padding: 8px 12px;
   border-radius: 999px;
   font-size: 0.85rem;
+}
+
+.soundtrack-picker {
+  display: flex;
+  align-items: center;
+}
+
+.soundtrack-select {
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.75);
+  color: var(--text);
+  padding: 6px 10px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .dpad {
