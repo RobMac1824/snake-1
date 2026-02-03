@@ -99,6 +99,22 @@ body::after {
   backdrop-filter: blur(12px);
 }
 
+.pulse {
+  animation: pulseHit 120ms ease-out;
+}
+
+@keyframes pulseHit {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.995);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
 .top-bar {
   display: flex;
   justify-content: space-between;

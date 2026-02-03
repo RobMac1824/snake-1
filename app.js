@@ -79,7 +79,43 @@ let countdownTimer = null;
 let bestScore = Number(localStorage.getItem(bestScoreKey) || 0);
 let soundEnabled = localStorage.getItem(soundKey) !== "false";
 let hapticsEnabled = localStorage.getItem(hapticsKey) !== "false";
-let audioContext = null;
+let audioCtx = null;
+let audioUnlocked = false;
+
+function getAudioCtx() {
+  if (!audioCtx) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) {
+      return null;
+    }
+    audioCtx = new AC();
+  }
+  return audioCtx;
+}
+
+async function unlockAudio() {
+  const ctx = getAudioCtx();
+  if (!ctx) {
+    return;
+  }
+
+  if (ctx.state === "suspended") {
+    try {
+      await ctx.resume();
+    } catch {}
+  }
+
+  try {
+    const oscillator = ctx.createOscillator();
+    const gain = ctx.createGain();
+    gain.gain.value = 0.0001;
+    oscillator.connect(gain).connect(ctx.destination);
+    oscillator.start();
+    oscillator.stop(ctx.currentTime + 0.01);
+  } catch {}
+
+  audioUnlocked = true;
+}
 const fireworks = [];
 
 const defaultState = () => ({
@@ -510,61 +546,97 @@ function applyTrailPenalty(now) {
 }
 
 function playEatEffects() {
-  vibrate(15);
-  playTone(620, 80, "triangle", 0.06);
+  haptic(15);
+  sfxEat();
 }
 
 function playPenaltyEffects() {
-  vibrate(35);
-  playTone(130, 160, "sawtooth", 0.05);
+  haptic(35);
+  sfxPenalty();
 }
 
 function playPowerupEffects() {
-  vibrate(22);
-  playTone(380, 110, "triangle", 0.06);
-  playTone(520, 120, "triangle", 0.06, 90);
+  haptic(22);
+  sfxPowerUp();
 }
 
 function playGameOverEffects() {
-  vibrate(60);
-  playTone(220, 180, "sawtooth", 0.07);
-  playTone(160, 200, "sawtooth", 0.07, 120);
-  playTone(70, 220, "sine", 0.08, 220);
+  haptic(60);
+  sfxGameOver();
 }
 
-function getAudioContext() {
-  if (!audioContext) {
-    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-  }
-  return audioContext;
-}
-
-function playTone(frequency, duration, type, volume, delay = 0) {
-  if (!soundEnabled) {
+function playTone({
+  freq = 440,
+  dur = 0.08,
+  type = "sine",
+  vol = 0.07,
+  slideTo = null,
+}) {
+  if (!soundEnabled || !audioUnlocked) {
     return;
   }
-  const ctx = getAudioContext();
-  if (ctx.state === "suspended") {
-    ctx.resume();
+  const ctx = getAudioCtx();
+  if (!ctx || ctx.state !== "running") {
+    return;
   }
+
   const oscillator = ctx.createOscillator();
   const gain = ctx.createGain();
+
   oscillator.type = type;
-  oscillator.frequency.value = frequency;
-  gain.gain.value = volume;
-  oscillator.connect(gain);
-  gain.connect(ctx.destination);
-  const startTime = ctx.currentTime + delay / 1000;
-  oscillator.start(startTime);
-  gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration / 1000);
-  oscillator.stop(startTime + duration / 1000);
+  oscillator.frequency.setValueAtTime(freq, ctx.currentTime);
+  if (slideTo != null) {
+    oscillator.frequency.exponentialRampToValueAtTime(slideTo, ctx.currentTime + dur);
+  }
+
+  gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(vol, ctx.currentTime + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
+
+  oscillator.connect(gain).connect(ctx.destination);
+  oscillator.start();
+  oscillator.stop(ctx.currentTime + dur);
 }
 
-function vibrate(pattern) {
-  if (!hapticsEnabled || !navigator.vibrate) {
+function sfxEat() {
+  playTone({ freq: 880, dur: 0.06, type: "triangle", vol: 0.06 });
+}
+
+function sfxPenalty() {
+  playTone({ freq: 130, dur: 0.16, type: "sawtooth", vol: 0.05 });
+}
+
+function sfxGameOver() {
+  playTone({ freq: 220, slideTo: 90, dur: 0.25, type: "sawtooth", vol: 0.05 });
+}
+
+function sfxPowerUp() {
+  playTone({ freq: 520, slideTo: 1040, dur: 0.12, type: "square", vol: 0.04 });
+}
+
+function canVibrate() {
+  return "vibrate" in navigator && typeof navigator.vibrate === "function";
+}
+
+function pulseUI() {
+  const el = document.querySelector(".app");
+  if (!el) {
     return;
   }
-  navigator.vibrate(pattern);
+  el.classList.remove("pulse");
+  void el.offsetWidth;
+  el.classList.add("pulse");
+}
+
+function haptic(ms) {
+  if (!hapticsEnabled) {
+    return;
+  }
+  if (!canVibrate()) {
+    pulseUI();
+    return;
+  }
+  navigator.vibrate(ms);
 }
 
 function spawnFireworks(position) {
@@ -865,6 +937,7 @@ function formatTime(ms) {
 function bindButtons() {
   startButton.addEventListener("click", () => {
     clearSavedGame();
+    unlockAudio();
     startGame();
   });
 
@@ -900,6 +973,7 @@ function bindButtons() {
   soundToggle.addEventListener("click", () => {
     soundEnabled = !soundEnabled;
     localStorage.setItem(soundKey, String(soundEnabled));
+    unlockAudio();
     updateSoundToggle();
   });
 
