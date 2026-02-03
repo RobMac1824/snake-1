@@ -44,6 +44,7 @@ body {
   align-items: stretch;
   position: relative;
   overflow-x: hidden;
+  overscroll-behavior: none;
 }
 
 body::before {
@@ -92,7 +93,8 @@ body::after {
   min-height: 100svh;
   display: flex;
   flex-direction: column;
-  padding: 18px 16px calc(18px + env(safe-area-inset-bottom, 0px) + 56px);
+  padding: calc(16px + env(safe-area-inset-top, 0px)) 16px
+    calc(14px + env(safe-area-inset-bottom, 0px));
   gap: 12px;
   background: var(--panel);
   border: 1px solid rgba(86, 175, 255, 0.25);
@@ -195,6 +197,7 @@ body::after {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
   padding: 6px 10px;
   border-radius: 999px;
   background: rgba(10, 16, 34, 0.7);
@@ -383,7 +386,8 @@ button:disabled {
 
 #gameCanvas {
   width: 100%;
-  max-width: 360px;
+  max-width: 420px;
+  max-height: min(58vh, 420px);
   aspect-ratio: 1;
   border-radius: 18px;
   background: rgba(6, 6, 16, 0.7);
@@ -392,6 +396,27 @@ button:disabled {
   margin-top: 6px;
   touch-action: none;
   box-shadow: 0 0 0 1px rgba(255, 79, 216, 0.15), 0 20px 40px rgba(5, 5, 20, 0.6);
+}
+
+#gameCanvas:focus-visible {
+  outline: 2px solid rgba(61, 231, 255, 0.7);
+  outline-offset: 3px;
+}
+
+#gameCanvas:active {
+  outline: none;
+}
+
+.game-hint {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+button {
+  touch-action: manipulation;
 }
 
 .controls {
@@ -405,6 +430,9 @@ button:disabled {
   flex-direction: column;
   align-items: center;
   gap: 8px;
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
 }
 
 .controls__pad {
@@ -729,6 +757,72 @@ button:disabled {
 
   button {
     min-width: 160px;
+  }
+}
+
+@media (max-width: 480px) {
+  .app {
+    padding: calc(12px + env(safe-area-inset-top, 0px)) 12px
+      calc(10px + env(safe-area-inset-bottom, 0px));
+    gap: 10px;
+  }
+
+  .hud {
+    padding: 4px 6px;
+    gap: 8px;
+  }
+
+  .top-actions {
+    width: 100%;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .scoreboard {
+    width: 100%;
+    justify-content: space-between;
+    gap: 6px 10px;
+  }
+
+  .screen {
+    padding: 16px;
+    gap: 14px;
+  }
+
+  .hero-card {
+    padding: 18px;
+    gap: 12px;
+  }
+
+  .hero-tagline {
+    font-size: 1rem;
+  }
+
+  .menu-toggles .ghost {
+    font-size: 0.8rem;
+  }
+
+  .game-hint {
+    font-size: 0.78rem;
+  }
+
+  #gameCanvas {
+    max-height: min(55vh, 360px);
+  }
+
+  .dpad {
+    grid-template-columns: repeat(3, clamp(56px, 20vw, 80px));
+    grid-template-rows: repeat(3, clamp(56px, 20vw, 80px));
+    gap: 6px;
+  }
+
+  .controls {
+    padding: 8px 10px calc(10px + env(safe-area-inset-bottom, 0px));
+    gap: 6px;
+  }
+
+  .brand-subline {
+    font-size: 0.55rem;
   }
 }
 
