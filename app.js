@@ -79,7 +79,7 @@ const usernameKey = "emberRunUsername";
 
 const supabaseConfig = window.SUPABASE_CONFIG || {};
 const supabaseUrl = "https://cqfcyezpcsaxaxrpcebr.supabase.co";
-const supabaseAnonKey = "PASTE_YOUR_sb_publishable_KEY_HERE";
+const supabaseAnonKey = "sb_publishable_PgxiGMNGhZxW342PKnyUwQ_2bjGRrfQ";
 
 
 const summaryLines = [
