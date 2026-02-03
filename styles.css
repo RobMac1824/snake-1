@@ -64,10 +64,72 @@ body {
   border: 1px solid var(--border);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
   font-size: 0.9rem;
+  position: relative;
+  overflow: visible;
 }
 
 .scoreboard strong {
   font-size: 1.2rem;
+}
+
+.score-fireworks {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 8px;
+  height: 8px;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.score-fireworks::before,
+.score-fireworks::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow:
+    0 -12px #ff6b6b,
+    10px -6px #ffd93d,
+    12px 6px #6c63ff,
+    0 12px #4dd599,
+    -12px 6px #4dabf7,
+    -10px -6px #ff8fab;
+  opacity: 0;
+  transform: scale(0.4);
+}
+
+.score-fireworks::after {
+  box-shadow:
+    0 -16px #f9c74f,
+    14px -2px #f94144,
+    12px 12px #577590,
+    0 16px #43aa8b,
+    -12px 12px #577590,
+    -14px -2px #f3722c;
+  transform: scale(0.3);
+}
+
+.score-fireworks.is-active::before {
+  animation: score-burst 0.7s ease-out;
+}
+
+.score-fireworks.is-active::after {
+  animation: score-burst 0.7s ease-out 0.05s;
+}
+
+@keyframes score-burst {
+  0% {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
 }
 
 .game-area {
