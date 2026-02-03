@@ -270,17 +270,44 @@ async function loadLeaderboard() {
 }
 
 async function submitScoreViaSupabase(score) {
-  if (!supabaseClient) {
-    return { ok: false };
-  }
-  const { error } = await supabaseClient.rpc("upsert_high_score", {
-    p_username: leaderboardUsername,
-    p_score: score,
-  });
-  if (error) {
+  try {
+    if (!leaderboardUsername) {
+      return { ok: false, message: "No username" };
+    }
+
+    const FUNCTION_URL =
+      "https://cqfcyezpcsaxaxrpcebr.supabase.co/functions/v1/dynamic-responder";
+
+    const res = await fetch(FUNCTION_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        // use your existing anon key from your supabase client
+        apikey: SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({
+        username: leaderboardUsername,
+        score: score,
+      }),
+    });
+
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok || !data || data.ok !== true) {
+      return {
+        ok: false,
+        message: data?.error || "Unable to submit score.",
+      };
+    }
+
+    return { ok: true };
+
+  } catch (err) {
+    console.error("submitScoreViaSupabase failed", err);
     return { ok: false, message: "Unable to submit score." };
   }
-  return { ok: true };
+}
+
 }
 
 async function submitScore(score) {
