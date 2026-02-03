@@ -292,7 +292,7 @@ button:active {
   display: grid;
   grid-template-columns: repeat(3, 64px);
   grid-template-rows: repeat(3, 64px);
-  gap: 12px;
+  gap: 6px;
   margin-top: 12px;
 }
 
