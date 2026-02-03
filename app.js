@@ -12,6 +12,8 @@ const restartButton = document.getElementById("restartButton");
 const menuButton = document.getElementById("menuButton");
 const soundtrackToggle = document.getElementById("soundtrackToggle");
 const soundtrackStatus = document.getElementById("soundtrackStatus");
+const soundtrackLabel = document.getElementById("soundtrackLabel");
+const soundtrackSelect = document.getElementById("soundtrackSelect");
 const dpadButtons = document.querySelectorAll(".dpad__button");
 const scoreFireworks = document.getElementById("scoreFireworks");
 
@@ -29,11 +31,23 @@ const rainbow = [
   "#c44dff",
 ];
 
-const soundtrack = new Audio(
-  "data:audio/midi;base64,TVRoZAAAAAYAAAABAGBNVHJrAAAAJgD/UQMHoSAAwFEAkDxkYIA8QACQQGRggEBAAJBDZGCAQ0AA/y8A"
-);
-soundtrack.loop = true;
-soundtrack.volume = 0.35;
+const soundtrackTracks = [
+  {
+    name: "Bit Bounce",
+    src: "data:audio/midi;base64,TVRoZAAAAAYAAAABAGBNVHJrAAAAEwD/UQMHoSAAkDxkYIA8QAD/LwA=",
+  },
+  {
+    name: "Pixel Hop",
+    src: "data:audio/midi;base64,TVRoZAAAAAYAAAABAGBNVHJrAAAAEwD/UQMHoSAAkEBkYIBAQAD/LwA=",
+  },
+  {
+    name: "Cloud Drift",
+    src: "data:audio/midi;base64,TVRoZAAAAAYAAAABAGBNVHJrAAAAEwD/UQMHoSAAkENkYIBDQAD/LwA=",
+  },
+];
+
+let soundtrackIndex = 0;
+let soundtrack = createSoundtrack(soundtrackTracks[soundtrackIndex].src);
 
 let gameState = null;
 let rafId = null;
@@ -300,7 +314,37 @@ function stopSoundtrack() {
   soundtrack.currentTime = 0;
 }
 
+function createSoundtrack(source) {
+  const audio = new Audio(source);
+  audio.loop = true;
+  audio.volume = 0.35;
+  return audio;
+}
+
+function setSoundtrack(index) {
+  const nextTrack = soundtrackTracks[index];
+  if (!nextTrack) {
+    return;
+  }
+  const wasPlaying = soundtrackEnabled && !soundtrack.paused;
+  soundtrack.pause();
+  soundtrack.currentTime = 0;
+  soundtrack = createSoundtrack(nextTrack.src);
+  soundtrackIndex = index;
+  updateSoundtrackUI();
+  if (wasPlaying && gameState?.running) {
+    startSoundtrack();
+  }
+}
+
 function updateSoundtrackUI() {
+  const track = soundtrackTracks[soundtrackIndex];
+  if (soundtrackLabel) {
+    soundtrackLabel.textContent = track?.name ?? "Soundtrack";
+  }
+  if (soundtrackSelect) {
+    soundtrackSelect.value = String(soundtrackIndex);
+  }
   soundtrackToggle.textContent = soundtrackEnabled ? "Mute" : "Play";
   soundtrackStatus.textContent = soundtrackEnabled ? "Playing" : "Muted";
 }
@@ -424,6 +468,13 @@ function bindButtons() {
       stopSoundtrack();
     }
     updateSoundtrackUI();
+  });
+
+  soundtrackSelect?.addEventListener("change", (event) => {
+    const nextIndex = Number(event.target.value);
+    if (!Number.isNaN(nextIndex)) {
+      setSoundtrack(nextIndex);
+    }
   });
 
   const directionMap = {
