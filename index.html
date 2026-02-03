@@ -63,6 +63,16 @@
       <section class="screen screen--game" id="gameScreen" aria-hidden="true">
         <p class="game-hint">Swipe to steer or tap the pad.</p>
         <canvas id="gameCanvas" width="360" height="360" aria-label="Snake game" role="img"></canvas>
+        <div class="controlsOverlay" id="controlsOverlay">
+          <div class="controls__pad" aria-label="Directional controls">
+            <div class="dpad">
+              <button class="dpad__button dpad__up" data-direction="up" aria-label="Move up">▲</button>
+              <button class="dpad__button dpad__left" data-direction="left" aria-label="Move left">◀</button>
+              <button class="dpad__button dpad__right" data-direction="right" aria-label="Move right">▶</button>
+              <button class="dpad__button dpad__down" data-direction="down" aria-label="Move down">▼</button>
+            </div>
+          </div>
+        </div>
         <div class="toast" id="powerToast" role="status" aria-live="polite" aria-hidden="true"></div>
         <div class="storm-overlay" id="stormOverlay" aria-hidden="true"></div>
         <div class="overlay overlay--countdown" id="countdownOverlay" aria-live="assertive" aria-hidden="true">
@@ -106,20 +116,6 @@
         </div>
       </section>
     </main>
-
-    <footer class="controls">
-      <div class="controls__pad" aria-label="Directional controls">
-        <div class="dpad">
-          <button class="dpad__button dpad__up" data-direction="up" aria-label="Move up">▲</button>
-          <button class="dpad__button dpad__left" data-direction="left" aria-label="Move left">◀</button>
-          <button class="dpad__button dpad__right" data-direction="right" aria-label="Move right">▶</button>
-          <button class="dpad__button dpad__down" data-direction="down" aria-label="Move down">▼</button>
-        </div>
-      </div>
-      <div class="controls__meta">
-        <div class="brand-subline station-line">K-DUST 88.8 FM — lingo, lingo.</div>
-      </div>
-    </footer>
   </div>
 
   <script src="app.js"></script>
