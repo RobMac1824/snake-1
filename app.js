@@ -256,7 +256,7 @@ async function loadLeaderboard() {
 
   const { data, error } = await supabaseClient
     .from("leaderboard_scores")
-    .select("username, high_score)
+    .select("username, high_score")
     .order("high_score", { ascending: false })
     .limit(50);
 
