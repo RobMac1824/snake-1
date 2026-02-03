@@ -1,5 +1,6 @@
 const canvas = document.getElementById("gameCanvas");
 const context = canvas.getContext("2d");
+const canvasStage = document.getElementById("canvasStage");
 
 const scoreLabel = document.getElementById("score");
 const bestScoreTop = document.getElementById("bestScoreTop");
@@ -22,7 +23,6 @@ const countdownOverlay = document.getElementById("countdownOverlay");
 const countdownText = document.getElementById("countdownText");
 const soundToggle = document.getElementById("soundToggle");
 const hapticsToggle = document.getElementById("hapticsToggle");
-const dpadButtons = document.querySelectorAll(".dpad__button");
 const scoreFireworks = document.getElementById("scoreFireworks");
 const gateChargeLabel = document.getElementById("gateCharge");
 const stormOverlay = document.getElementById("stormOverlay");
@@ -34,7 +34,8 @@ const newBestLine = document.getElementById("newBestLine");
 
 const VERSION = "0.8";
 const gridSize = 18;
-const cellSize = canvas.width / gridSize;
+let canvasSize = canvas.width;
+let cellSize = canvas.width / gridSize;
 const foodMargin = 1;
 const emberColors = ["#ff7a63", "#ff9f45", "#ffd166", "#ff4fd8", "#3de7ff"];
 
@@ -44,6 +45,8 @@ const RAMP_PER_POINT = 2.3;
 const COUNTDOWN_STEPS = ["3", "2", "1", "GO"];
 const COUNTDOWN_STEP_MS = 250;
 const SWIPE_THRESHOLD = 24;
+const TAP_THRESHOLD = 10;
+const TAP_DURATION_MS = 250;
 
 const TRAIL_LIFETIME_MS = 2600;
 const OVERHEAT_MS = 800;
@@ -148,6 +151,27 @@ const defaultState = () => ({
   minStepMs: BASE_STEP_MS,
   lastDirectionChange: 0,
 });
+
+function resizeCanvas() {
+  if (!canvasStage) {
+    return;
+  }
+  const rect = canvasStage.getBoundingClientRect();
+  const availableWidth = rect.width;
+  const availableHeight = rect.height;
+  const size = Math.floor(Math.min(availableWidth, availableHeight));
+  if (!size) {
+    return;
+  }
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.round(size * dpr);
+  canvas.height = Math.round(size * dpr);
+  canvas.style.width = `${size}px`;
+  canvas.style.height = `${size}px`;
+  canvasSize = size;
+  cellSize = size / gridSize;
+  context.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
 
 function randomBetween(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -289,6 +313,11 @@ function showScreen(screen) {
   if (screen === menuScreen) {
     showResumeOption();
   }
+  if (isGame) {
+    requestAnimationFrame(() => {
+      resizeCanvas();
+    });
+  }
 }
 
 function sanitizeStateForStart(state) {
@@ -383,6 +412,7 @@ function startGame(state = defaultState()) {
   updateGateChargeUI();
   showScreen(gameScreen);
   hidePauseOverlay();
+  resizeCanvas();
   startCountdown();
   loop(lastTime);
 }
@@ -735,14 +765,14 @@ function trimTrail(now) {
 }
 
 function draw(timestamp) {
-  context.clearRect(0, 0, canvas.width, canvas.height);
+  context.clearRect(0, 0, canvasSize, canvasSize);
 
-  const gradient = context.createLinearGradient(0, 0, canvas.width, canvas.height);
+  const gradient = context.createLinearGradient(0, 0, canvasSize, canvasSize);
   gradient.addColorStop(0, "#060610");
   gradient.addColorStop(0.5, "#120c24");
   gradient.addColorStop(1, "#0b0a18");
   context.fillStyle = gradient;
-  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.fillRect(0, 0, canvasSize, canvasSize);
 
   context.fillStyle = "rgba(255, 255, 255, 0.03)";
   for (let x = 0; x < gridSize; x += 1) {
@@ -768,7 +798,7 @@ function draw(timestamp) {
 
   if (timestamp < gameState.overheatUntil) {
     context.fillStyle = "rgba(255, 116, 77, 0.08)";
-    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.fillRect(0, 0, canvasSize, canvasSize);
   }
 }
 
@@ -1027,15 +1057,6 @@ function bindButtons() {
     right: { x: 1, y: 0 },
   };
 
-  dpadButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-      const direction = button.dataset.direction;
-      if (direction && directionMap[direction]) {
-        applyDirection(directionMap[direction]);
-      }
-    });
-  });
-
   document.addEventListener("keydown", (event) => {
     const keyMap = {
       ArrowUp: { x: 0, y: -1 },
@@ -1053,29 +1074,35 @@ function bindButtons() {
     }
   });
 
-  let touchStart = null;
+  let swipeStart = null;
+  let activePointerId = null;
 
-  const trackTouchStart = (event) => {
-    if (!event.changedTouches?.length) {
+  const handlePointerDown = (event) => {
+    if (!gameScreen?.classList.contains("is-active")) {
       return;
     }
-    const touch = event.changedTouches[0];
-    touchStart = { x: touch.clientX, y: touch.clientY };
+    activePointerId = event.pointerId;
+    swipeStart = {
+      x: event.clientX,
+      y: event.clientY,
+      time: performance.now(),
+      moved: false,
+    };
+    if (event.pointerType === "touch") {
+      event.preventDefault();
+    }
   };
 
-  const trackTouchEnd = (event) => {
-    if (!touchStart || !event.changedTouches?.length) {
+  const handlePointerMove = (event) => {
+    if (!swipeStart || event.pointerId !== activePointerId) {
       return;
     }
-    const touch = event.changedTouches[0];
-    const dx = touch.clientX - touchStart.x;
-    const dy = touch.clientY - touchStart.y;
-    touchStart = null;
-
-    if (Math.abs(dx) < SWIPE_THRESHOLD && Math.abs(dy) < SWIPE_THRESHOLD) {
+    const dx = event.clientX - swipeStart.x;
+    const dy = event.clientY - swipeStart.y;
+    const distance = Math.hypot(dx, dy);
+    if (distance < SWIPE_THRESHOLD) {
       return;
     }
-
     const nextDirection =
       Math.abs(dx) > Math.abs(dy)
         ? dx > 0
@@ -1084,13 +1111,35 @@ function bindButtons() {
         : dy > 0
           ? directionMap.down
           : directionMap.up;
-
     applyDirection(nextDirection);
+    swipeStart = {
+      x: event.clientX,
+      y: event.clientY,
+      time: swipeStart.time,
+      moved: true,
+    };
+    event.preventDefault();
   };
 
-  const touchTarget = gameScreen || canvas;
-  touchTarget.addEventListener("touchstart", trackTouchStart, { passive: true });
-  touchTarget.addEventListener("touchend", trackTouchEnd, { passive: true });
+  const handlePointerUp = (event) => {
+    if (!swipeStart || event.pointerId !== activePointerId) {
+      return;
+    }
+    const dx = event.clientX - swipeStart.x;
+    const dy = event.clientY - swipeStart.y;
+    const distance = Math.hypot(dx, dy);
+    const duration = performance.now() - swipeStart.time;
+    if (!swipeStart.moved && distance < TAP_THRESHOLD && duration < TAP_DURATION_MS) {
+      setPaused(!gameState?.paused);
+    }
+    swipeStart = null;
+    activePointerId = null;
+  };
+
+  canvas.addEventListener("pointerdown", handlePointerDown, { passive: false });
+  canvas.addEventListener("pointermove", handlePointerMove, { passive: false });
+  canvas.addEventListener("pointerup", handlePointerUp);
+  canvas.addEventListener("pointercancel", handlePointerUp);
 }
 
 function showResumeOption() {
@@ -1107,6 +1156,16 @@ showScreen(menuScreen);
 if (versionLabel) {
   versionLabel.textContent = `v${VERSION}`;
 }
+
+window.addEventListener("resize", () => {
+  resizeCanvas();
+});
+
+window.addEventListener("orientationchange", () => {
+  window.setTimeout(() => {
+    resizeCanvas();
+  }, 150);
+});
 
 const persistGame = () => {
   if (document.visibilityState === "hidden") {

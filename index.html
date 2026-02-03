@@ -61,17 +61,9 @@
       </section>
 
       <section class="screen screen--game" id="gameScreen" aria-hidden="true">
-        <p class="game-hint">Swipe to steer or tap the pad.</p>
-        <canvas id="gameCanvas" width="360" height="360" aria-label="Snake game" role="img"></canvas>
-        <div class="controlsOverlay" id="controlsOverlay">
-          <div class="controls__pad" aria-label="Directional controls">
-            <div class="dpad">
-              <button class="dpad__button dpad__up" data-direction="up" aria-label="Move up">▲</button>
-              <button class="dpad__button dpad__left" data-direction="left" aria-label="Move left">◀</button>
-              <button class="dpad__button dpad__right" data-direction="right" aria-label="Move right">▶</button>
-              <button class="dpad__button dpad__down" data-direction="down" aria-label="Move down">▼</button>
-            </div>
-          </div>
+        <div class="canvas-stage" id="canvasStage">
+          <div class="hint" id="swipeHint">Swipe</div>
+          <canvas id="gameCanvas" width="360" height="360" aria-label="Snake game" role="img"></canvas>
         </div>
         <div class="toast" id="powerToast" role="status" aria-live="polite" aria-hidden="true"></div>
         <div class="storm-overlay" id="stormOverlay" aria-hidden="true"></div>
