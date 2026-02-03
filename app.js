@@ -250,24 +250,26 @@ function renderLeaderboard(rows) {
 
 async function loadLeaderboard() {
   if (!supabaseClient) {
-    setLeaderboardStatus("Supabase not configured", "warn");
-    renderLeaderboard([]);
-    return;
+    setLeaderboardStatus("SUPABASE NOT CONFIGURED");
+    return [];
   }
-  setLeaderboardStatus("Loading…");
+
   const { data, error } = await supabaseClient
     .from("leaderboard_scores")
-    .select("username, high_score")
+    .select("username, high_score, updated_at")
     .order("high_score", { ascending: false })
     .limit(50);
+
   if (error) {
-    setLeaderboardStatus("Unable to load", "warn");
-    renderLeaderboard([]);
-    return;
+    console.log("LEADERBOARD ERROR:", error);
+    setLeaderboardStatus(`UNABLE TO LOAD: ${error.message}`);
+    return [];
   }
+
   setLeaderboardStatus("Top 50");
-  renderLeaderboard(data || []);
+  return data || [];
 }
+
 
 async function submitScoreViaSupabase(score) {
   try {
