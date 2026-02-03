@@ -2,6 +2,10 @@ const canvas = document.getElementById("gameCanvas");
 const context = canvas.getContext("2d");
 
 const scoreLabel = document.getElementById("score");
+const bestScoreTop = document.getElementById("bestScoreTop");
+const bestScoreMenu = document.getElementById("bestScoreMenu");
+const bestScoreSummary = document.getElementById("bestScoreSummary");
+const versionLabel = document.getElementById("versionLabel");
 const menuScreen = document.getElementById("menuScreen");
 const gameScreen = document.getElementById("gameScreen");
 const summaryScreen = document.getElementById("summaryScreen");
@@ -10,13 +14,18 @@ const startButton = document.getElementById("startButton");
 const resumeButton = document.getElementById("resumeButton");
 const restartButton = document.getElementById("restartButton");
 const menuButton = document.getElementById("menuButton");
-const soundtrackToggle = document.getElementById("soundtrackToggle");
-const soundtrackStatus = document.getElementById("soundtrackStatus");
-const soundtrackLabel = document.getElementById("soundtrackLabel");
-const soundtrackSelect = document.getElementById("soundtrackSelect");
+const pauseButton = document.getElementById("pauseButton");
+const pauseOverlay = document.getElementById("pauseOverlay");
+const resumePauseButton = document.getElementById("resumePauseButton");
+const pauseMenuButton = document.getElementById("pauseMenuButton");
+const countdownOverlay = document.getElementById("countdownOverlay");
+const countdownText = document.getElementById("countdownText");
+const soundToggle = document.getElementById("soundToggle");
+const hapticsToggle = document.getElementById("hapticsToggle");
 const dpadButtons = document.querySelectorAll(".dpad__button");
 const scoreFireworks = document.getElementById("scoreFireworks");
 
+const VERSION = "0.8";
 const gridSize = 18;
 const cellSize = canvas.width / gridSize;
 const foodEmojis = ["🍒", "🍇", "🍉", "🍓", "🍍", "🍌", "🍑", "🥝", "🍪", "🧁"];
@@ -32,32 +41,28 @@ const rainbow = [
   "#c44dff",
 ];
 
-const soundtrackTracks = [
-  {
-    name: "Bit Bounce",
-    src: "data:audio/midi;base64,TVRoZAAAAAYAAAABAGBNVHJrAAAAEwD/UQMHoSAAkDxkYIA8QAD/LwA=",
-  },
-  {
-    name: "Pixel Hop",
-    src: "data:audio/midi;base64,TVRoZAAAAAYAAAABAGBNVHJrAAAAEwD/UQMHoSAAkEBkYIBAQAD/LwA=",
-  },
-  {
-    name: "Cloud Drift",
-    src: "data:audio/midi;base64,TVRoZAAAAAYAAAABAGBNVHJrAAAAEwD/UQMHoSAAkENkYIBDQAD/LwA=",
-  },
-];
+const BASE_STEP_MS = 285;
+const MIN_STEP_MS = 135;
+const RAMP_PER_POINT = 2.4;
+const COUNTDOWN_STEPS = ["3", "2", "1", "GO"];
+const COUNTDOWN_STEP_MS = 250;
+const SWIPE_THRESHOLD = 24;
 
-let soundtrackIndex = 0;
-let soundtrack = createSoundtrack(soundtrackTracks[soundtrackIndex].src);
+const saveKey = "rainbow-snake-save";
+const bestScoreKey = "snakeBestScore";
+const soundKey = "snakeSoundEnabled";
+const hapticsKey = "snakeHapticsEnabled";
 
 let gameState = null;
 let rafId = null;
 let lastTime = 0;
 let accumulator = 0;
-const stepDuration = 315 * 0.9;
-const saveKey = "rainbow-snake-save";
+let countdownTimer = null;
+let bestScore = Number(localStorage.getItem(bestScoreKey) || 0);
+let soundEnabled = localStorage.getItem(soundKey) !== "false";
+let hapticsEnabled = localStorage.getItem(hapticsKey) !== "false";
+let audioContext = null;
 const fireworks = [];
-let soundtrackEnabled = true;
 
 const defaultState = () => ({
   snake: [
@@ -71,6 +76,8 @@ const defaultState = () => ({
   foodEmoji: randomEmoji(),
   score: 0,
   running: false,
+  paused: false,
+  countdown: false,
 });
 
 function randomEmoji() {
@@ -137,6 +144,28 @@ function updateScore() {
   scoreLabel.textContent = gameState.score.toString();
 }
 
+function updateBestScoreUI() {
+  const label = `Best ${bestScore}`;
+  if (bestScoreTop) {
+    bestScoreTop.textContent = label;
+  }
+  if (bestScoreMenu) {
+    bestScoreMenu.textContent = bestScore.toString();
+  }
+  if (bestScoreSummary) {
+    bestScoreSummary.textContent = bestScore.toString();
+  }
+}
+
+function updateBestScore(score) {
+  if (score <= bestScore) {
+    return;
+  }
+  bestScore = score;
+  localStorage.setItem(bestScoreKey, String(bestScore));
+  updateBestScoreUI();
+}
+
 function triggerScoreFireworks() {
   if (!scoreFireworks) {
     return;
@@ -152,6 +181,9 @@ function showScreen(screen) {
     panel.classList.toggle("is-active", isActive);
     panel.setAttribute("aria-hidden", String(!isActive));
   });
+  const isGame = screen === gameScreen;
+  pauseButton.toggleAttribute("hidden", !isGame);
+  pauseButton.disabled = !isGame;
   if (screen === menuScreen) {
     showResumeOption();
   }
@@ -219,23 +251,25 @@ function sanitizeStateForStart(state) {
     safeState.score = 0;
   }
 
+  safeState.running = true;
+  safeState.paused = false;
+  safeState.countdown = false;
+
   return safeState;
 }
 
 function startGame(state = defaultState()) {
-  if (rafId) {
-    cancelAnimationFrame(rafId);
-  }
+  stopLoop();
   const mergedState = sanitizeStateForStart(state);
   gameState = {
     ...mergedState,
-    running: true,
   };
   lastTime = performance.now();
   accumulator = 0;
   updateScore();
   showScreen(gameScreen);
-  startSoundtrack();
+  hidePauseOverlay();
+  startCountdown();
   loop(lastTime);
 }
 
@@ -245,14 +279,41 @@ function endGame() {
   }
   gameState.running = false;
   fireworks.length = 0;
+  clearCountdown();
+  hidePauseOverlay();
+  stopLoop();
+  updateBestScore(gameState.score);
+  finalScore.textContent = gameState.score.toString();
+  clearSavedGame();
+  showScreen(summaryScreen);
+  playGameOverEffects();
+}
+
+function stopLoop() {
   if (rafId) {
     cancelAnimationFrame(rafId);
     rafId = null;
   }
-  stopSoundtrack();
-  finalScore.textContent = gameState.score.toString();
-  clearSavedGame();
-  showScreen(summaryScreen);
+}
+
+function stopGame({ save = true } = {}) {
+  if (!gameState) {
+    return;
+  }
+  gameState.running = false;
+  gameState.paused = false;
+  gameState.countdown = false;
+  if (save) {
+    saveGame();
+  }
+  clearCountdown();
+  hidePauseOverlay();
+  stopLoop();
+}
+
+function getStepDuration() {
+  const points = gameState ? gameState.score / 10 : 0;
+  return Math.max(MIN_STEP_MS, BASE_STEP_MS - points * RAMP_PER_POINT);
 }
 
 function loop(timestamp) {
@@ -261,14 +322,19 @@ function loop(timestamp) {
   }
   const delta = timestamp - lastTime;
   lastTime = timestamp;
-  accumulator += delta;
 
-  while (accumulator >= stepDuration) {
-    step();
-    accumulator -= stepDuration;
+  if (!gameState.paused && !gameState.countdown) {
+    accumulator += delta;
+    const stepDuration = getStepDuration();
+    while (accumulator >= stepDuration) {
+      step();
+      accumulator -= stepDuration;
+    }
+    updateFireworks(delta);
+  } else {
+    accumulator = 0;
   }
 
-  updateFireworks(delta);
   draw();
   rafId = requestAnimationFrame(loop);
 }
@@ -298,6 +364,7 @@ function step() {
     triggerScoreFireworks();
     gameState.food = placeFood();
     gameState.foodEmoji = randomEmoji();
+    playEatEffects();
   } else {
     gameState.snake.pop();
   }
@@ -306,58 +373,48 @@ function step() {
   saveGame();
 }
 
-function startSoundtrack() {
-  if (!soundtrackEnabled) {
-    return;
-  }
-  if (!soundtrack.paused) {
-    return;
-  }
-  soundtrack.currentTime = 0;
-  soundtrack.play().catch(() => {});
+function playEatEffects() {
+  vibrate(18);
+  playTone(540, 90, "triangle", 0.05);
 }
 
-function stopSoundtrack() {
-  if (soundtrack.paused) {
+function playGameOverEffects() {
+  vibrate(50);
+  playTone(160, 220, "sawtooth", 0.08);
+}
+
+function getAudioContext() {
+  if (!audioContext) {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  return audioContext;
+}
+
+function playTone(frequency, duration, type, volume) {
+  if (!soundEnabled) {
     return;
   }
-  soundtrack.pause();
-  soundtrack.currentTime = 0;
+  const ctx = getAudioContext();
+  if (ctx.state === "suspended") {
+    ctx.resume();
+  }
+  const oscillator = ctx.createOscillator();
+  const gain = ctx.createGain();
+  oscillator.type = type;
+  oscillator.frequency.value = frequency;
+  gain.gain.value = volume;
+  oscillator.connect(gain);
+  gain.connect(ctx.destination);
+  oscillator.start();
+  gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration / 1000);
+  oscillator.stop(ctx.currentTime + duration / 1000);
 }
 
-function createSoundtrack(source) {
-  const audio = new Audio(source);
-  audio.loop = true;
-  audio.volume = 0.35;
-  return audio;
-}
-
-function setSoundtrack(index) {
-  const nextTrack = soundtrackTracks[index];
-  if (!nextTrack) {
+function vibrate(pattern) {
+  if (!hapticsEnabled || !navigator.vibrate) {
     return;
   }
-  const wasPlaying = soundtrackEnabled && !soundtrack.paused;
-  soundtrack.pause();
-  soundtrack.currentTime = 0;
-  soundtrack = createSoundtrack(nextTrack.src);
-  soundtrackIndex = index;
-  updateSoundtrackUI();
-  if (wasPlaying && gameState?.running) {
-    startSoundtrack();
-  }
-}
-
-function updateSoundtrackUI() {
-  const track = soundtrackTracks[soundtrackIndex];
-  if (soundtrackLabel) {
-    soundtrackLabel.textContent = track?.name ?? "Soundtrack";
-  }
-  if (soundtrackSelect) {
-    soundtrackSelect.value = String(soundtrackIndex);
-  }
-  soundtrackToggle.textContent = soundtrackEnabled ? "Mute" : "Play";
-  soundtrackStatus.textContent = soundtrackEnabled ? "Playing" : "Muted";
+  navigator.vibrate(pattern);
 }
 
 function spawnFireworks(position) {
@@ -406,7 +463,7 @@ function placeFood(snake = gameState.snake) {
 function draw() {
   context.clearRect(0, 0, canvas.width, canvas.height);
 
-  context.fillStyle = "#e8ebff";
+  context.fillStyle = "#dbe5ff";
   context.fillRect(0, 0, canvas.width, canvas.height);
 
   gameState.snake.forEach((segment, index) => {
@@ -449,6 +506,84 @@ function hexToRgb(hex) {
   return `${r}, ${g}, ${b}`;
 }
 
+function startCountdown() {
+  clearCountdown();
+  if (!countdownOverlay || !countdownText) {
+    return;
+  }
+  let stepIndex = 0;
+  gameState.countdown = true;
+  countdownOverlay.classList.add("is-active");
+  countdownOverlay.setAttribute("aria-hidden", "false");
+  countdownText.textContent = COUNTDOWN_STEPS[stepIndex];
+
+  countdownTimer = window.setInterval(() => {
+    stepIndex += 1;
+    if (stepIndex >= COUNTDOWN_STEPS.length) {
+      finishCountdown();
+      return;
+    }
+    countdownText.textContent = COUNTDOWN_STEPS[stepIndex];
+  }, COUNTDOWN_STEP_MS);
+}
+
+function finishCountdown() {
+  clearCountdown();
+  if (countdownOverlay) {
+    countdownOverlay.classList.remove("is-active");
+    countdownOverlay.setAttribute("aria-hidden", "true");
+  }
+  gameState.countdown = false;
+  lastTime = performance.now();
+  accumulator = 0;
+}
+
+function clearCountdown() {
+  if (countdownTimer) {
+    window.clearInterval(countdownTimer);
+    countdownTimer = null;
+  }
+}
+
+function setPaused(isPaused) {
+  if (!gameState || !gameState.running || gameState.countdown) {
+    return;
+  }
+  gameState.paused = isPaused;
+  pauseButton.setAttribute("aria-pressed", String(isPaused));
+  if (isPaused) {
+    showPauseOverlay();
+  } else {
+    hidePauseOverlay();
+    lastTime = performance.now();
+    accumulator = 0;
+  }
+}
+
+function showPauseOverlay() {
+  if (!pauseOverlay) {
+    return;
+  }
+  pauseOverlay.classList.add("is-active");
+  pauseOverlay.setAttribute("aria-hidden", "false");
+}
+
+function hidePauseOverlay() {
+  if (!pauseOverlay) {
+    return;
+  }
+  pauseOverlay.classList.remove("is-active");
+  pauseOverlay.setAttribute("aria-hidden", "true");
+}
+
+function updateSoundToggle() {
+  soundToggle.textContent = soundEnabled ? "Sound: On" : "Sound: Off";
+}
+
+function updateHapticsToggle() {
+  hapticsToggle.textContent = hapticsEnabled ? "Haptics: On" : "Haptics: Off";
+}
+
 function bindButtons() {
   startButton.addEventListener("click", () => {
     clearSavedGame();
@@ -467,25 +602,33 @@ function bindButtons() {
   });
 
   menuButton.addEventListener("click", () => {
+    stopGame({ save: false });
     showScreen(menuScreen);
-    stopSoundtrack();
   });
 
-  soundtrackToggle.addEventListener("click", () => {
-    soundtrackEnabled = !soundtrackEnabled;
-    if (soundtrackEnabled && gameState?.running) {
-      startSoundtrack();
-    } else {
-      stopSoundtrack();
-    }
-    updateSoundtrackUI();
+  pauseButton.addEventListener("click", () => {
+    setPaused(!gameState?.paused);
   });
 
-  soundtrackSelect?.addEventListener("change", (event) => {
-    const nextIndex = Number(event.target.value);
-    if (!Number.isNaN(nextIndex)) {
-      setSoundtrack(nextIndex);
-    }
+  resumePauseButton.addEventListener("click", () => {
+    setPaused(false);
+  });
+
+  pauseMenuButton.addEventListener("click", () => {
+    stopGame();
+    showScreen(menuScreen);
+  });
+
+  soundToggle.addEventListener("click", () => {
+    soundEnabled = !soundEnabled;
+    localStorage.setItem(soundKey, String(soundEnabled));
+    updateSoundToggle();
+  });
+
+  hapticsToggle.addEventListener("click", () => {
+    hapticsEnabled = !hapticsEnabled;
+    localStorage.setItem(hapticsKey, String(hapticsEnabled));
+    updateHapticsToggle();
   });
 
   const directionMap = {
@@ -514,7 +657,48 @@ function bindButtons() {
     if (keyMap[event.key]) {
       applyDirection(keyMap[event.key]);
     }
+    if (event.key === " ") {
+      setPaused(!gameState?.paused);
+    }
   });
+
+  let touchStart = null;
+
+  const trackTouchStart = (event) => {
+    if (!event.changedTouches?.length) {
+      return;
+    }
+    const touch = event.changedTouches[0];
+    touchStart = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const trackTouchEnd = (event) => {
+    if (!touchStart || !event.changedTouches?.length) {
+      return;
+    }
+    const touch = event.changedTouches[0];
+    const dx = touch.clientX - touchStart.x;
+    const dy = touch.clientY - touchStart.y;
+    touchStart = null;
+
+    if (Math.abs(dx) < SWIPE_THRESHOLD && Math.abs(dy) < SWIPE_THRESHOLD) {
+      return;
+    }
+
+    const nextDirection =
+      Math.abs(dx) > Math.abs(dy)
+        ? dx > 0
+          ? directionMap.right
+          : directionMap.left
+        : dy > 0
+          ? directionMap.down
+          : directionMap.up;
+
+    applyDirection(nextDirection);
+  };
+
+  canvas.addEventListener("touchstart", trackTouchStart, { passive: true });
+  canvas.addEventListener("touchend", trackTouchEnd, { passive: true });
 }
 
 function showResumeOption() {
@@ -523,15 +707,22 @@ function showResumeOption() {
 }
 
 bindButtons();
+updateBestScoreUI();
+updateSoundToggle();
+updateHapticsToggle();
 showResumeOption();
 showScreen(menuScreen);
-updateSoundtrackUI();
+if (versionLabel) {
+  versionLabel.textContent = `v${VERSION}`;
+}
 
-document.addEventListener("visibilitychange", () => {
+const persistGame = () => {
   if (document.visibilityState === "hidden") {
     saveGame();
   }
-});
+};
+
+document.addEventListener("visibilitychange", persistGame);
 
 window.addEventListener("beforeunload", () => {
   saveGame();

@@ -10,10 +10,16 @@
   <div class="app">
     <header class="top-bar">
       <div class="brand">there's a snake in my boots</div>
-      <div class="scoreboard" aria-live="polite">
-        <span>Score</span>
-        <strong id="score">0</strong>
-        <span class="score-fireworks" id="scoreFireworks" aria-hidden="true"></span>
+      <div class="top-actions">
+        <div class="scoreboard" aria-live="polite">
+          <span>Score</span>
+          <strong id="score">0</strong>
+          <span class="best-score" id="bestScoreTop">Best 0</span>
+          <span class="score-fireworks" id="scoreFireworks" aria-hidden="true"></span>
+        </div>
+        <button id="pauseButton" class="ghost pause-button" type="button" aria-pressed="false" hidden>
+          Pause
+        </button>
       </div>
     </header>
 
@@ -25,30 +31,40 @@
           <button id="startButton" class="primary">Start Game</button>
           <button id="resumeButton" class="ghost" hidden>Resume Saved Game</button>
         </div>
+        <div class="menu-meta">
+          <div class="menu-stats">
+            <span class="menu-stat-label">Best Score</span>
+            <strong id="bestScoreMenu">0</strong>
+          </div>
+          <div class="menu-toggles">
+            <button id="soundToggle" class="ghost" type="button">Sound: On</button>
+            <button id="hapticsToggle" class="ghost" type="button">Haptics: On</button>
+          </div>
+          <div class="version" id="versionLabel"></div>
+        </div>
       </section>
 
       <section class="screen screen--game" id="gameScreen" aria-hidden="true">
         <canvas id="gameCanvas" width="360" height="360" aria-label="Snake game" role="img"></canvas>
-        <div class="soundtrack-bar" aria-live="polite">
-          <div>
-            <span class="soundtrack-label" id="soundtrackLabel">Bit Bounce</span>
-            <span class="soundtrack-status" id="soundtrackStatus">Playing</span>
-          </div>
-          <label class="soundtrack-picker" for="soundtrackSelect">
-            <span class="sr-only">Select soundtrack</span>
-            <select id="soundtrackSelect" class="soundtrack-select">
-              <option value="0">Bit Bounce</option>
-              <option value="1">Pixel Hop</option>
-              <option value="2">Cloud Drift</option>
-            </select>
-          </label>
-          <button id="soundtrackToggle" class="ghost" type="button">Mute</button>
-        </div>
         <div class="dpad" aria-label="Directional controls">
           <button class="dpad__button dpad__up" data-direction="up" aria-label="Move up">▲</button>
           <button class="dpad__button dpad__left" data-direction="left" aria-label="Move left">◀</button>
           <button class="dpad__button dpad__right" data-direction="right" aria-label="Move right">▶</button>
           <button class="dpad__button dpad__down" data-direction="down" aria-label="Move down">▼</button>
+        </div>
+        <div class="overlay overlay--countdown" id="countdownOverlay" aria-live="assertive" aria-hidden="true">
+          <div class="overlay-card">
+            <span id="countdownText">3</span>
+          </div>
+        </div>
+        <div class="overlay overlay--pause" id="pauseOverlay" aria-hidden="true">
+          <div class="overlay-card">
+            <h3>Paused</h3>
+            <div class="menu-actions">
+              <button id="resumePauseButton" class="primary" type="button">Resume</button>
+              <button id="pauseMenuButton" class="ghost" type="button">Main Menu</button>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -56,6 +72,10 @@
         <h2>Game Over</h2>
         <p>Your final score</p>
         <div class="final-score" id="finalScore">0</div>
+        <div class="summary-meta">
+          <span>Best Score</span>
+          <strong id="bestScoreSummary">0</strong>
+        </div>
         <div class="menu-actions">
           <button id="restartButton" class="primary">Play Again</button>
           <button id="menuButton" class="ghost">Main Menu</button>
@@ -67,4 +87,3 @@
   <script src="app.js"></script>
 </body>
 </html>
-styles.css
