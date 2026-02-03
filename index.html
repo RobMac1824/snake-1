@@ -28,6 +28,13 @@
 
       <section class="screen screen--game" id="gameScreen" aria-hidden="true">
         <canvas id="gameCanvas" width="360" height="360" aria-label="Snake game" role="img"></canvas>
+        <div class="soundtrack-bar" aria-live="polite">
+          <div>
+            <span class="soundtrack-label">Nintendo soundtrack</span>
+            <span class="soundtrack-status" id="soundtrackStatus">Playing</span>
+          </div>
+          <button id="soundtrackToggle" class="ghost" type="button">Mute</button>
+        </div>
         <div class="dpad" aria-label="Directional controls">
           <button class="dpad__button dpad__up" data-direction="up" aria-label="Move up">▲</button>
           <button class="dpad__button dpad__left" data-direction="left" aria-label="Move left">◀</button>

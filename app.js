@@ -10,6 +10,8 @@ const startButton = document.getElementById("startButton");
 const resumeButton = document.getElementById("resumeButton");
 const restartButton = document.getElementById("restartButton");
 const menuButton = document.getElementById("menuButton");
+const soundtrackToggle = document.getElementById("soundtrackToggle");
+const soundtrackStatus = document.getElementById("soundtrackStatus");
 const dpadButtons = document.querySelectorAll(".dpad__button");
 
 const gridSize = 18;
@@ -39,6 +41,7 @@ let accumulator = 0;
 const stepDuration = 315 * 0.9;
 const saveKey = "rainbow-snake-save";
 const fireworks = [];
+let soundtrackEnabled = true;
 
 const defaultState = () => ({
   snake: [
@@ -268,6 +271,9 @@ function step() {
 }
 
 function startSoundtrack() {
+  if (!soundtrackEnabled) {
+    return;
+  }
   if (!soundtrack.paused) {
     return;
   }
@@ -281,6 +287,11 @@ function stopSoundtrack() {
   }
   soundtrack.pause();
   soundtrack.currentTime = 0;
+}
+
+function updateSoundtrackUI() {
+  soundtrackToggle.textContent = soundtrackEnabled ? "Mute" : "Play";
+  soundtrackStatus.textContent = soundtrackEnabled ? "Playing" : "Muted";
 }
 
 function spawnFireworks(position) {
@@ -394,6 +405,16 @@ function bindButtons() {
     stopSoundtrack();
   });
 
+  soundtrackToggle.addEventListener("click", () => {
+    soundtrackEnabled = !soundtrackEnabled;
+    if (soundtrackEnabled && gameState?.running) {
+      startSoundtrack();
+    } else {
+      stopSoundtrack();
+    }
+    updateSoundtrackUI();
+  });
+
   const directionMap = {
     up: { x: 0, y: -1 },
     down: { x: 0, y: 1 },
@@ -431,6 +452,7 @@ function showResumeOption() {
 bindButtons();
 showResumeOption();
 showScreen(menuScreen);
+updateSoundtrackUI();
 
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") {
