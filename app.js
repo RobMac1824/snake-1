@@ -78,8 +78,9 @@ const hapticsKey = "snakeHapticsEnabled";
 const usernameKey = "emberRunUsername";
 
 const supabaseConfig = window.SUPABASE_CONFIG || {};
-const supabaseUrl = supabaseConfig.url;
-const supabaseAnonKey = supabaseConfig.anonKey;
+const supabaseUrl = "https://cqfcyezpcsaxaxrpcebr.supabase.co";
+const supabaseAnonKey = "PASTE_YOUR_sb_publishable_KEY_HERE";
+
 
 const summaryLines = [
   "The dust wins.",
