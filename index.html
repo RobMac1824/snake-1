@@ -3,18 +3,19 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>there's a snake in my boots</title>
+  <title>EMBER RUN</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <div class="app">
     <header class="top-bar">
-      <div class="brand">there's a snake in my boots</div>
+      <div class="brand marquee">EMBER RUN</div>
       <div class="top-actions">
         <div class="scoreboard" aria-live="polite">
           <span>Score</span>
           <strong id="score">0</strong>
           <span class="best-score" id="bestScoreTop">Best 0</span>
+          <span class="gate-charge" id="gateCharge">Gate Charge: 0</span>
           <span class="score-fireworks" id="scoreFireworks" aria-hidden="true"></span>
         </div>
         <button id="pauseButton" class="ghost pause-button" type="button" aria-pressed="false" hidden>
@@ -25,21 +26,34 @@
 
     <main class="game-area">
       <section class="screen screen--menu is-active" id="menuScreen" aria-hidden="false">
-        <h1>there's a snake in my boots</h1>
-        <p>Lingo Lingo.</p>
-        <div class="menu-actions">
-          <button id="startButton" class="primary">Start Game</button>
-          <button id="resumeButton" class="ghost" hidden>Resume Saved Game</button>
+        <div class="menu-hero">
+          <div class="hero-card">
+            <span class="hero-eyebrow">Festival Poster</span>
+            <p class="hero-tagline">
+              Ride the ember. Don’t bite the body. Respect the trail.
+            </p>
+            <div class="menu-actions">
+              <button id="startButton" class="primary">Start Game</button>
+              <button id="resumeButton" class="ghost" hidden>Resume Saved Game</button>
+            </div>
+            <div class="menu-stats">
+              <span class="menu-stat-label">Best Score</span>
+              <strong id="bestScoreMenu">0</strong>
+            </div>
+            <div class="menu-toggles">
+              <button id="soundToggle" class="ghost" type="button">Sound: On</button>
+              <button id="hapticsToggle" class="ghost" type="button">Haptics: On</button>
+            </div>
+            <details class="how-to-play">
+              <summary>How to Play</summary>
+              <p>
+                Glide through neon dust, collect Fire Orbs, and avoid your body. Fresh ember trail
+                stings with heat, and Totem Gates let you pass one wall during storms.
+              </p>
+            </details>
+          </div>
         </div>
-        <div class="menu-meta">
-          <div class="menu-stats">
-            <span class="menu-stat-label">Best Score</span>
-            <strong id="bestScoreMenu">0</strong>
-          </div>
-          <div class="menu-toggles">
-            <button id="soundToggle" class="ghost" type="button">Sound: On</button>
-            <button id="hapticsToggle" class="ghost" type="button">Haptics: On</button>
-          </div>
+        <div class="menu-footer">
           <div class="version" id="versionLabel"></div>
         </div>
       </section>
@@ -52,6 +66,7 @@
           <button class="dpad__button dpad__right" data-direction="right" aria-label="Move right">▶</button>
           <button class="dpad__button dpad__down" data-direction="down" aria-label="Move down">▼</button>
         </div>
+        <div class="storm-overlay" id="stormOverlay" aria-hidden="true"></div>
         <div class="overlay overlay--countdown" id="countdownOverlay" aria-live="assertive" aria-hidden="true">
           <div class="overlay-card">
             <span id="countdownText">3</span>
@@ -69,12 +84,22 @@
       </section>
 
       <section class="screen screen--summary" id="summaryScreen" aria-hidden="true">
-        <h2>Game Over</h2>
-        <p>Your final score</p>
+        <h2>Set Ended</h2>
+        <p id="summaryLine">The dust wins.</p>
         <div class="final-score" id="finalScore">0</div>
         <div class="summary-meta">
-          <span>Best Score</span>
-          <strong id="bestScoreSummary">0</strong>
+          <div class="summary-stat">
+            <span>Best</span>
+            <strong id="bestScoreSummary">0</strong>
+          </div>
+          <div class="summary-stat">
+            <span>Run Time</span>
+            <strong id="runTimeSummary">0:00</strong>
+          </div>
+          <div class="summary-stat">
+            <span>Max Intensity</span>
+            <strong id="maxIntensitySummary">0</strong>
+          </div>
         </div>
         <div class="menu-actions">
           <button id="restartButton" class="primary">Play Again</button>
