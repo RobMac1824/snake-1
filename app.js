@@ -257,9 +257,8 @@ async function loadLeaderboard() {
   setLeaderboardStatus("Loading…");
   const { data, error } = await supabaseClient
     .from("leaderboard_scores")
-    .select("username, high_score, updated_at")
+    .select("username, high_score")
     .order("high_score", { ascending: false })
-    .order("updated_at", { ascending: false })
     .limit(50);
   if (error) {
     setLeaderboardStatus("Unable to load", "warn");
