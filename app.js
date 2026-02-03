@@ -20,6 +20,7 @@ const scoreFireworks = document.getElementById("scoreFireworks");
 const gridSize = 18;
 const cellSize = canvas.width / gridSize;
 const foodEmojis = ["🍒", "🍇", "🍉", "🍓", "🍍", "🍌", "🍑", "🥝", "🍪", "🧁"];
+const foodMargin = 2;
 const rainbow = [
   "#ff4d4d",
   "#ff944d",
@@ -77,9 +78,12 @@ function randomEmoji() {
 }
 
 function randomFoodPosition() {
+  const min = foodMargin;
+  const max = gridSize - foodMargin;
+  const safeRange = Math.max(max - min, 1);
   return {
-    x: Math.floor(Math.random() * gridSize),
-    y: Math.floor(Math.random() * gridSize),
+    x: Math.floor(Math.random() * safeRange) + min,
+    y: Math.floor(Math.random() * safeRange) + min,
   };
 }
 
@@ -194,6 +198,13 @@ function sanitizeStateForStart(state) {
     !safeState.food ||
     typeof safeState.food.x !== "number" ||
     typeof safeState.food.y !== "number"
+  ) {
+    safeState.food = placeFood(safeState.snake);
+  } else if (
+    safeState.food.x < foodMargin ||
+    safeState.food.x >= gridSize - foodMargin ||
+    safeState.food.y < foodMargin ||
+    safeState.food.y >= gridSize - foodMargin
   ) {
     safeState.food = placeFood(safeState.snake);
   } else if (safeState.snake.some((segment) => positionsEqual(segment, safeState.food))) {
