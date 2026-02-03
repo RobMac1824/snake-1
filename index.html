@@ -9,7 +9,10 @@
 <body>
   <div class="app">
     <header class="top-bar">
-      <div class="brand marquee">EMBER RUN</div>
+      <div class="brand-block">
+        <div class="brand marquee">EMBER RUN</div>
+        <div class="brand-subline station-line">K-DUST 88.8 FM — lingo, lingo.</div>
+      </div>
       <div class="top-actions">
         <div class="scoreboard" aria-live="polite">
           <span>Score</span>
@@ -60,6 +63,7 @@
 
       <section class="screen screen--game" id="gameScreen" aria-hidden="true">
         <canvas id="gameCanvas" width="360" height="360" aria-label="Snake game" role="img"></canvas>
+        <div class="toast" id="powerToast" role="status" aria-live="polite" aria-hidden="true"></div>
         <div class="dpad" aria-label="Directional controls">
           <button class="dpad__button dpad__up" data-direction="up" aria-label="Move up">▲</button>
           <button class="dpad__button dpad__left" data-direction="left" aria-label="Move left">◀</button>
@@ -86,6 +90,7 @@
       <section class="screen screen--summary" id="summaryScreen" aria-hidden="true">
         <h2>Set Ended</h2>
         <p id="summaryLine">The dust wins.</p>
+        <p class="summary-new-best" id="newBestLine" hidden>NEW BEST — lingo, lingo.</p>
         <div class="final-score" id="finalScore">0</div>
         <div class="summary-meta">
           <div class="summary-stat">

@@ -29,6 +29,8 @@ const stormOverlay = document.getElementById("stormOverlay");
 const summaryLine = document.getElementById("summaryLine");
 const runTimeSummary = document.getElementById("runTimeSummary");
 const maxIntensitySummary = document.getElementById("maxIntensitySummary");
+const powerToast = document.getElementById("powerToast");
+const newBestLine = document.getElementById("newBestLine");
 
 const VERSION = "0.8";
 const gridSize = 18;
@@ -69,6 +71,7 @@ const summaryLines = [
   "You found the edge of the playa.",
   "Embers remember your run.",
   "Bass fades into dawn.",
+  "The dust wins. lingo, lingo.",
 ];
 
 let gameState = null;
@@ -140,6 +143,7 @@ const defaultState = () => ({
   totem: null,
   gateCharge: 0,
   gateExpiresAt: 0,
+  newBestAchieved: false,
   startTime: 0,
   minStepMs: BASE_STEP_MS,
   lastDirectionChange: 0,
@@ -252,6 +256,24 @@ function triggerScoreFireworks() {
   scoreFireworks.classList.add("is-active");
 }
 
+let toastTimeout = null;
+
+function showToast(message, duration = 1200) {
+  if (!powerToast) {
+    return;
+  }
+  powerToast.textContent = message;
+  powerToast.classList.add("is-active");
+  powerToast.setAttribute("aria-hidden", "false");
+  if (toastTimeout) {
+    window.clearTimeout(toastTimeout);
+  }
+  toastTimeout = window.setTimeout(() => {
+    powerToast.classList.remove("is-active");
+    powerToast.setAttribute("aria-hidden", "true");
+  }, duration);
+}
+
 function showScreen(screen) {
   [menuScreen, gameScreen, summaryScreen].forEach((panel) => {
     const isActive = panel === screen;
@@ -337,6 +359,7 @@ function sanitizeStateForStart(state) {
   safeState.totem = null;
   safeState.gateCharge = 0;
   safeState.gateExpiresAt = 0;
+  safeState.newBestAchieved = false;
   safeState.startTime = 0;
   safeState.minStepMs = BASE_STEP_MS;
   safeState.lastDirectionChange = 0;
@@ -368,6 +391,7 @@ function endGame() {
     return;
   }
   gameState.running = false;
+  const isNewBest = gameState.newBestAchieved || gameState.score > bestScore;
   fireworks.length = 0;
   clearCountdown();
   hidePauseOverlay();
@@ -375,6 +399,7 @@ function endGame() {
   updateBestScore(gameState.score);
   finalScore.textContent = gameState.score.toString();
   updateSummaryStats();
+  updateNewBestLine(isNewBest);
   clearSavedGame();
   showScreen(summaryScreen);
   playGameOverEffects();
@@ -512,11 +537,15 @@ function step(now) {
     gameState.gateExpiresAt = now + GATE_DURATION_MS;
     updateGateChargeUI();
     gameState.totem = null;
+    showToast("Totem hears you: lingo, lingo.");
     playPowerupEffects();
   }
 
   if (positionsEqual(next, gameState.food)) {
     gameState.score += 10;
+    if (!gameState.newBestAchieved && gameState.score > bestScore) {
+      gameState.newBestAchieved = true;
+    }
     spawnFireworks(next);
     triggerScoreFireworks();
     gameState.food = placeFood();
@@ -925,6 +954,13 @@ function updateSummaryStats() {
     const intensity = Math.round(1000 / Math.max(gameState.minStepMs, MIN_STEP_MS));
     maxIntensitySummary.textContent = intensity.toString();
   }
+}
+
+function updateNewBestLine(isNewBest) {
+  if (!newBestLine) {
+    return;
+  }
+  newBestLine.hidden = !isNewBest;
 }
 
 function formatTime(ms) {
