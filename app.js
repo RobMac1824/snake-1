@@ -30,6 +30,18 @@ const runTimeSummary = document.getElementById("runTimeSummary");
 const maxIntensitySummary = document.getElementById("maxIntensitySummary");
 const powerToast = document.getElementById("powerToast");
 const newBestLine = document.getElementById("newBestLine");
+const usernameOverlay = document.getElementById("usernameOverlay");
+const usernameInput = document.getElementById("usernameInput");
+const saveUsernameButton = document.getElementById("saveUsernameButton");
+const cancelUsernameButton = document.getElementById("cancelUsernameButton");
+const usernameWarning = document.getElementById("usernameWarning");
+const usernameError = document.getElementById("usernameError");
+const usernameLabel = document.getElementById("usernameLabel");
+const changeUsernameButton = document.getElementById("changeUsernameButton");
+const submitScoreButton = document.getElementById("submitScoreButton");
+const submitScoreStatus = document.getElementById("submitScoreStatus");
+const leaderboardBody = document.getElementById("leaderboardBody");
+const leaderboardStatus = document.getElementById("leaderboardStatus");
 
 const VERSION = "0.8";
 const gridSize = 18;
@@ -63,6 +75,11 @@ const saveKey = "neon-dust-save";
 const bestScoreKey = "snakeBestScore";
 const soundKey = "snakeSoundEnabled";
 const hapticsKey = "snakeHapticsEnabled";
+const usernameKey = "emberRunUsername";
+
+const supabaseConfig = window.SUPABASE_CONFIG || {};
+const supabaseUrl = supabaseConfig.url;
+const supabaseAnonKey = supabaseConfig.anonKey;
 
 const summaryLines = [
   "The dust wins.",
@@ -83,6 +100,8 @@ let soundEnabled = localStorage.getItem(soundKey) !== "false";
 let hapticsEnabled = localStorage.getItem(hapticsKey) !== "false";
 let audioCtx = null;
 let audioUnlocked = false;
+let leaderboardUsername = null;
+let supabaseClient = null;
 
 function getAudioCtx() {
   if (!audioCtx) {
@@ -117,6 +136,164 @@ async function unlockAudio() {
   } catch {}
 
   audioUnlocked = true;
+}
+
+function createSupabaseClient() {
+  if (!supabaseUrl || !supabaseAnonKey || !window.supabase) {
+    return null;
+  }
+  return window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+}
+
+function normalizeUsername(value) {
+  if (!value) {
+    return "";
+  }
+  const collapsed = value.replace(/\s+/g, " ").trim();
+  if (collapsed.length < 1 || collapsed.length > 24) {
+    return "";
+  }
+  if (/[\u0000-\u001F\u007F]/.test(collapsed)) {
+    return "";
+  }
+  return collapsed;
+}
+
+function showUsernameError(message) {
+  if (!usernameError) {
+    return;
+  }
+  usernameError.textContent = message;
+  usernameError.hidden = !message;
+}
+
+function loadUsername() {
+  return normalizeUsername(localStorage.getItem(usernameKey));
+}
+
+function setUsername(value) {
+  const normalized = normalizeUsername(value);
+  if (!normalized) {
+    return false;
+  }
+  leaderboardUsername = normalized;
+  localStorage.setItem(usernameKey, normalized);
+  updateUsernameUI();
+  return true;
+}
+
+function updateUsernameUI() {
+  if (usernameLabel) {
+    usernameLabel.textContent = leaderboardUsername || "---";
+  }
+}
+
+function openUsernameGate({ isChange } = { isChange: false }) {
+  if (!usernameOverlay) {
+    return;
+  }
+  usernameOverlay.classList.add("is-active");
+  usernameOverlay.setAttribute("aria-hidden", "false");
+  usernameInput.value = leaderboardUsername || "";
+  if (usernameError) {
+    usernameError.hidden = true;
+  }
+  usernameWarning.hidden = !isChange;
+  cancelUsernameButton.hidden = !isChange;
+  usernameInput.focus();
+}
+
+function closeUsernameGate() {
+  if (!usernameOverlay) {
+    return;
+  }
+  usernameOverlay.classList.remove("is-active");
+  usernameOverlay.setAttribute("aria-hidden", "true");
+}
+
+function ensureUsername() {
+  leaderboardUsername = loadUsername();
+  updateUsernameUI();
+  if (!leaderboardUsername) {
+    openUsernameGate({ isChange: false });
+  }
+}
+
+function setLeaderboardStatus(message, tone = "muted") {
+  if (!leaderboardStatus) {
+    return;
+  }
+  leaderboardStatus.textContent = message;
+  leaderboardStatus.dataset.tone = tone;
+}
+
+function renderLeaderboard(rows) {
+  if (!leaderboardBody) {
+    return;
+  }
+  leaderboardBody.innerHTML = "";
+  if (!rows.length) {
+    const emptyRow = document.createElement("div");
+    emptyRow.className = "leaderboard-row";
+    emptyRow.innerHTML = "<span>—</span><span>No scores yet</span><span>—</span>";
+    leaderboardBody.appendChild(emptyRow);
+    return;
+  }
+  rows.forEach((row, index) => {
+    const entry = document.createElement("div");
+    entry.className = "leaderboard-row";
+    entry.innerHTML = `<span>${index + 1}</span><span>${row.username}</span><span>${row.high_score}</span>`;
+    leaderboardBody.appendChild(entry);
+  });
+}
+
+async function loadLeaderboard() {
+  if (!supabaseClient) {
+    setLeaderboardStatus("Supabase not configured", "warn");
+    renderLeaderboard([]);
+    return;
+  }
+  setLeaderboardStatus("Loading…");
+  const { data, error } = await supabaseClient
+    .from("leaderboard_scores")
+    .select("username, high_score, updated_at")
+    .order("high_score", { ascending: false })
+    .order("updated_at", { ascending: false })
+    .limit(50);
+  if (error) {
+    setLeaderboardStatus("Unable to load", "warn");
+    renderLeaderboard([]);
+    return;
+  }
+  setLeaderboardStatus("Top 50");
+  renderLeaderboard(data || []);
+}
+
+async function submitScore(score) {
+  if (!leaderboardUsername) {
+    openUsernameGate({ isChange: false });
+    return;
+  }
+  if (!submitScoreStatus) {
+    return;
+  }
+  submitScoreStatus.textContent = "Submitting…";
+  try {
+    const response = await fetch("/api/score", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: leaderboardUsername, score }),
+    });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null);
+      submitScoreStatus.textContent = payload?.error || "Unable to submit score.";
+      return;
+    }
+    submitScoreStatus.textContent = "Score locked in.";
+    loadLeaderboard();
+  } catch {
+    submitScoreStatus.textContent = "Network error. Try again.";
+  }
 }
 const fireworks = [];
 
@@ -287,6 +464,7 @@ function showScreen(screen) {
   document.body.style.touchAction = isGame ? "none" : "";
   if (screen === menuScreen) {
     showResumeOption();
+    loadLeaderboard();
   }
 }
 
@@ -400,6 +578,9 @@ function endGame() {
   finalScore.textContent = gameState.score.toString();
   updateSummaryStats();
   updateNewBestLine(isNewBest);
+  if (submitScoreStatus) {
+    submitScoreStatus.textContent = "Send your score to the global board.";
+  }
   clearSavedGame();
   showScreen(summaryScreen);
   playGameOverEffects();
@@ -1019,6 +1200,32 @@ function bindButtons() {
     updateHapticsToggle();
   });
 
+  saveUsernameButton.addEventListener("click", () => {
+    const nextName = usernameInput.value;
+    if (!setUsername(nextName)) {
+      showUsernameError("Use 1–24 characters with no control symbols.");
+      return;
+    }
+    showUsernameError("");
+    closeUsernameGate();
+    loadLeaderboard();
+  });
+
+  cancelUsernameButton.addEventListener("click", () => {
+    closeUsernameGate();
+  });
+
+  changeUsernameButton.addEventListener("click", () => {
+    openUsernameGate({ isChange: true });
+  });
+
+  submitScoreButton.addEventListener("click", () => {
+    if (!gameState) {
+      return;
+    }
+    submitScore(gameState.score);
+  });
+
   const directionMap = {
     up: { x: 0, y: -1 },
     down: { x: 0, y: 1 },
@@ -1089,6 +1296,8 @@ function showResumeOption() {
 }
 
 bindButtons();
+supabaseClient = createSupabaseClient();
+ensureUsername();
 updateBestScoreUI();
 updateSoundToggle();
 updateHapticsToggle();

@@ -43,6 +43,11 @@
               <span class="menu-stat-label">Best Score</span>
               <strong id="bestScoreMenu">0</strong>
             </div>
+            <div class="menu-profile">
+              <div class="menu-stat-label">Runner</div>
+              <strong id="usernameLabel">---</strong>
+              <button id="changeUsernameButton" class="ghost" type="button">Change Username</button>
+            </div>
             <div class="menu-toggles">
               <button id="soundToggle" class="ghost" type="button">Sound: On</button>
               <button id="hapticsToggle" class="ghost" type="button">Haptics: On</button>
@@ -54,6 +59,22 @@
                 stings with heat, and Totem Gates let you pass one wall during storms.
               </p>
             </details>
+          </div>
+        </div>
+        <div class="leaderboard-section">
+          <div class="leaderboard-card">
+            <div class="leaderboard-header">
+              <span class="hero-eyebrow">Global Leaderboard</span>
+              <span class="leaderboard-status" id="leaderboardStatus">Loading…</span>
+            </div>
+            <div class="leaderboard-table" role="table" aria-label="Top 50 leaderboard">
+              <div class="leaderboard-row leaderboard-head" role="row">
+                <span role="columnheader">#</span>
+                <span role="columnheader">Runner</span>
+                <span role="columnheader">High Score</span>
+              </div>
+              <div id="leaderboardBody" class="leaderboard-body" role="rowgroup"></div>
+            </div>
           </div>
         </div>
         <div class="menu-footer">
@@ -87,6 +108,10 @@
         <p id="summaryLine">there’s a snake in my boots.</p>
         <p class="summary-new-best" id="newBestLine" hidden>NEW BEST — lingo, lingo.</p>
         <div class="final-score" id="finalScore">0</div>
+        <div class="score-submit">
+          <button id="submitScoreButton" class="primary" type="button">Submit Score</button>
+          <span class="form-hint" id="submitScoreStatus">Send your score to the global board.</span>
+        </div>
         <div class="summary-meta">
           <div class="summary-stat">
             <span>Best</span>
@@ -109,6 +134,33 @@
     </main>
   </div>
 
+  <div class="overlay overlay--username" id="usernameOverlay" aria-hidden="true">
+    <div class="overlay-card">
+      <span class="hero-eyebrow">Leaderboard Identity</span>
+      <h3>Pick a username</h3>
+      <p class="form-hint">Used for the global leaderboard. 1–24 characters.</p>
+      <p class="form-hint" id="usernameError" hidden></p>
+      <label class="input-field">
+        <span class="sr-only">Username</span>
+        <input id="usernameInput" type="text" maxlength="24" autocomplete="nickname" />
+      </label>
+      <p class="warning-text" id="usernameWarning" hidden>
+        Changing your name creates a new leaderboard identity.
+      </p>
+      <div class="menu-actions">
+        <button id="saveUsernameButton" class="primary" type="button">Save Username</button>
+        <button id="cancelUsernameButton" class="ghost" type="button">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    window.SUPABASE_CONFIG = {
+      url: "",
+      anonKey: "",
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="app.js"></script>
 </body>
 </html>

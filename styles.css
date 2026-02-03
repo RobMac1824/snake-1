@@ -581,6 +581,131 @@ button {
   align-self: center;
 }
 
+.menu-profile {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  text-align: center;
+}
+
+.menu-profile strong {
+  font-size: 1.05rem;
+  color: var(--text);
+}
+
+.leaderboard-section {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.leaderboard-card {
+  width: min(360px, 100%);
+  background: rgba(14, 18, 30, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 22px;
+  padding: 18px;
+  box-shadow: 0 12px 22px rgba(4, 6, 18, 0.55);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.leaderboard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.leaderboard-status {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.leaderboard-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.leaderboard-row {
+  display: grid;
+  grid-template-columns: 38px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.9rem;
+}
+
+.leaderboard-row span:last-child {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.leaderboard-head {
+  background: rgba(61, 231, 255, 0.12);
+  border-color: rgba(61, 231, 255, 0.3);
+  color: var(--text);
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.leaderboard-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.input-field {
+  width: 100%;
+}
+
+.input-field input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(8, 10, 20, 0.8);
+  color: var(--text);
+  font-size: 1rem;
+  font-family: inherit;
+}
+
+.input-field input:focus-visible {
+  outline: 2px solid rgba(61, 231, 255, 0.6);
+  outline-offset: 2px;
+}
+
+.form-hint {
+  font-size: 0.82rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+.warning-text {
+  font-size: 0.8rem;
+  color: var(--fire-amber);
+  text-align: center;
+}
+
+.score-submit {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+}
+
 .menu-toggles .ghost {
   padding: 10px 14px;
   border-radius: 999px;
