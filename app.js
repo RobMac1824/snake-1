@@ -26,12 +26,19 @@ const rainbow = [
   "#c44dff",
 ];
 
+const soundtrack = new Audio(
+  "data:audio/midi;base64,TVRoZAAAAAYAAAABAGBNVHJrAAAAJgD/UQMHoSAAwFEAkDxkYIA8QACQQGRggEBAAJBDZGCAQ0AA/y8A"
+);
+soundtrack.loop = true;
+soundtrack.volume = 0.35;
+
 let gameState = null;
 let rafId = null;
 let lastTime = 0;
 let accumulator = 0;
 const stepDuration = 315 * 0.9;
 const saveKey = "rainbow-snake-save";
+const fireworks = [];
 
 const defaultState = () => ({
   snake: [
@@ -190,6 +197,7 @@ function startGame(state = defaultState()) {
   accumulator = 0;
   updateScore();
   showScreen(gameScreen);
+  startSoundtrack();
   loop(lastTime);
 }
 
@@ -198,10 +206,12 @@ function endGame() {
     return;
   }
   gameState.running = false;
+  fireworks.length = 0;
   if (rafId) {
     cancelAnimationFrame(rafId);
     rafId = null;
   }
+  stopSoundtrack();
   finalScore.textContent = gameState.score.toString();
   clearSavedGame();
   showScreen(summaryScreen);
@@ -220,6 +230,7 @@ function loop(timestamp) {
     accumulator -= stepDuration;
   }
 
+  updateFireworks(delta);
   draw();
   rafId = requestAnimationFrame(loop);
 }
@@ -245,6 +256,7 @@ function step() {
 
   if (positionsEqual(next, gameState.food)) {
     gameState.score += 10;
+    spawnFireworks(next);
     gameState.food = placeFood();
     gameState.foodEmoji = randomEmoji();
   } else {
@@ -253,6 +265,57 @@ function step() {
 
   updateScore();
   saveGame();
+}
+
+function startSoundtrack() {
+  if (!soundtrack.paused) {
+    return;
+  }
+  soundtrack.currentTime = 0;
+  soundtrack.play().catch(() => {});
+}
+
+function stopSoundtrack() {
+  if (soundtrack.paused) {
+    return;
+  }
+  soundtrack.pause();
+  soundtrack.currentTime = 0;
+}
+
+function spawnFireworks(position) {
+  const colors = ["#ff7a7a", "#ffd86b", "#8dffb7", "#6bb6ff", "#d48dff"];
+  const centerX = position.x * cellSize + cellSize / 2;
+  const centerY = position.y * cellSize + cellSize / 2;
+  const burstCount = 18;
+
+  for (let i = 0; i < burstCount; i += 1) {
+    const angle = (Math.PI * 2 * i) / burstCount;
+    const speed = 1.5 + Math.random() * 1.8;
+    fireworks.push({
+      x: centerX,
+      y: centerY,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 520 + Math.random() * 260,
+      maxLife: 780,
+      color: colors[i % colors.length],
+      size: 3 + Math.random() * 2,
+    });
+  }
+}
+
+function updateFireworks(delta) {
+  for (let i = fireworks.length - 1; i >= 0; i -= 1) {
+    const spark = fireworks[i];
+    spark.life -= delta;
+    spark.x += spark.vx * (delta / 16);
+    spark.y += spark.vy * (delta / 16);
+    spark.vy += 0.02 * (delta / 16);
+    if (spark.life <= 0) {
+      fireworks.splice(i, 1);
+    }
+  }
 }
 
 function placeFood(snake = gameState.snake) {
@@ -290,6 +353,23 @@ function draw() {
     gameState.food.x * cellSize + cellSize / 2,
     gameState.food.y * cellSize + cellSize / 2
   );
+
+  fireworks.forEach((spark) => {
+    const alpha = Math.max(spark.life / spark.maxLife, 0);
+    context.fillStyle = `rgba(${hexToRgb(spark.color)}, ${alpha})`;
+    context.beginPath();
+    context.arc(spark.x, spark.y, spark.size, 0, Math.PI * 2);
+    context.fill();
+  });
+}
+
+function hexToRgb(hex) {
+  const sanitized = hex.replace("#", "");
+  const value = parseInt(sanitized, 16);
+  const r = (value >> 16) & 255;
+  const g = (value >> 8) & 255;
+  const b = value & 255;
+  return `${r}, ${g}, ${b}`;
 }
 
 function bindButtons() {
@@ -311,6 +391,7 @@ function bindButtons() {
 
   menuButton.addEventListener("click", () => {
     showScreen(menuScreen);
+    stopSoundtrack();
   });
 
   const directionMap = {
