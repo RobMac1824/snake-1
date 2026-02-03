@@ -24,34 +24,52 @@ const soundToggle = document.getElementById("soundToggle");
 const hapticsToggle = document.getElementById("hapticsToggle");
 const dpadButtons = document.querySelectorAll(".dpad__button");
 const scoreFireworks = document.getElementById("scoreFireworks");
+const gateChargeLabel = document.getElementById("gateCharge");
+const stormOverlay = document.getElementById("stormOverlay");
+const summaryLine = document.getElementById("summaryLine");
+const runTimeSummary = document.getElementById("runTimeSummary");
+const maxIntensitySummary = document.getElementById("maxIntensitySummary");
 
 const VERSION = "0.8";
 const gridSize = 18;
 const cellSize = canvas.width / gridSize;
-const foodEmojis = ["🍒", "🍇", "🍉", "🍓", "🍍", "🍌", "🍑", "🥝", "🍪", "🧁"];
-const foodMargin = 2;
-const rainbow = [
-  "#ff4d4d",
-  "#ff944d",
-  "#ffd24d",
-  "#a3ff4d",
-  "#4dffcf",
-  "#4d9dff",
-  "#7b4dff",
-  "#c44dff",
-];
+const foodMargin = 1;
+const emberColors = ["#ff7a63", "#ff9f45", "#ffd166", "#ff4fd8", "#3de7ff"];
 
-const BASE_STEP_MS = 285;
-const MIN_STEP_MS = 135;
-const RAMP_PER_POINT = 2.4;
+const BASE_STEP_MS = 270;
+const MIN_STEP_MS = 120;
+const RAMP_PER_POINT = 2.3;
 const COUNTDOWN_STEPS = ["3", "2", "1", "GO"];
 const COUNTDOWN_STEP_MS = 250;
 const SWIPE_THRESHOLD = 24;
 
-const saveKey = "rainbow-snake-save";
+const TRAIL_LIFETIME_MS = 2600;
+const OVERHEAT_MS = 800;
+const OVERHEAT_DAMPEN_MS = 180;
+const STORM_MIN_MS = 20000;
+const STORM_MAX_MS = 35000;
+const STORM_DURATION_MIN = 3000;
+const STORM_DURATION_MAX = 5000;
+const STORM_SPEED_FACTOR = 0.88;
+const OVERHEAT_SPEED_FACTOR = 1.35;
+const TOTEM_MIN_MS = 18000;
+const TOTEM_MAX_MS = 26000;
+const TOTEM_DURATION_MS = 9000;
+const GATE_DURATION_MS = 5000;
+const TRAIL_PENALTY_COOLDOWN_MS = 320;
+
+const saveKey = "neon-dust-save";
 const bestScoreKey = "snakeBestScore";
 const soundKey = "snakeSoundEnabled";
 const hapticsKey = "snakeHapticsEnabled";
+
+const summaryLines = [
+  "The dust wins.",
+  "Too hot to hold.",
+  "You found the edge of the playa.",
+  "Embers remember your run.",
+  "Bass fades into dawn.",
+];
 
 let gameState = null;
 let rafId = null;
@@ -73,15 +91,26 @@ const defaultState = () => ({
   direction: { x: 1, y: 0 },
   queuedDirection: { x: 1, y: 0 },
   food: randomFoodPosition(),
-  foodEmoji: randomEmoji(),
   score: 0,
   running: false,
   paused: false,
   countdown: false,
+  trail: [],
+  overheatUntil: 0,
+  lastTrailPenalty: 0,
+  nextStormAt: 0,
+  stormActiveUntil: 0,
+  nextTotemAt: 0,
+  totem: null,
+  gateCharge: 0,
+  gateExpiresAt: 0,
+  startTime: 0,
+  minStepMs: BASE_STEP_MS,
+  lastDirectionChange: 0,
 });
 
-function randomEmoji() {
-  return foodEmojis[Math.floor(Math.random() * foodEmojis.length)];
+function randomBetween(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
 function randomFoodPosition() {
@@ -106,7 +135,12 @@ function applyDirection(next) {
   if (!gameState || isOpposite(gameState.direction, next)) {
     return;
   }
+  const now = performance.now();
+  if (gameState.overheatUntil > now && now - gameState.lastDirectionChange < OVERHEAT_DAMPEN_MS) {
+    return;
+  }
   gameState.queuedDirection = next;
+  gameState.lastDirectionChange = now;
 }
 
 function saveGame() {
@@ -118,7 +152,6 @@ function saveGame() {
     direction: gameState.direction,
     queuedDirection: gameState.queuedDirection,
     food: gameState.food,
-    foodEmoji: gameState.foodEmoji,
     score: gameState.score,
   };
   localStorage.setItem(saveKey, JSON.stringify(payload));
@@ -166,6 +199,14 @@ function updateBestScore(score) {
   updateBestScoreUI();
 }
 
+function updateGateChargeUI() {
+  if (!gateChargeLabel) {
+    return;
+  }
+  const charge = gameState?.gateCharge ?? 0;
+  gateChargeLabel.textContent = `Gate Charge: ${charge}`;
+}
+
 function triggerScoreFireworks() {
   if (!scoreFireworks) {
     return;
@@ -184,6 +225,8 @@ function showScreen(screen) {
   const isGame = screen === gameScreen;
   pauseButton.toggleAttribute("hidden", !isGame);
   pauseButton.disabled = !isGame;
+  document.body.style.overflow = isGame ? "hidden" : "";
+  document.body.style.touchAction = isGame ? "none" : "";
   if (screen === menuScreen) {
     showResumeOption();
   }
@@ -202,6 +245,7 @@ function sanitizeStateForStart(state) {
     ...baseState,
     ...sanitizedState,
   };
+  safeState.trail = Array.isArray(safeState.trail) ? safeState.trail : [];
 
   if (!Array.isArray(safeState.snake) || safeState.snake.length === 0) {
     safeState.snake = [{ x: 5, y: 5 }];
@@ -231,20 +275,16 @@ function sanitizeStateForStart(state) {
     typeof safeState.food.x !== "number" ||
     typeof safeState.food.y !== "number"
   ) {
-    safeState.food = placeFood(safeState.snake);
+    safeState.food = placeFood(safeState.snake, safeState.trail, safeState.totem);
   } else if (
     safeState.food.x < foodMargin ||
     safeState.food.x >= gridSize - foodMargin ||
     safeState.food.y < foodMargin ||
     safeState.food.y >= gridSize - foodMargin
   ) {
-    safeState.food = placeFood(safeState.snake);
+    safeState.food = placeFood(safeState.snake, safeState.trail, safeState.totem);
   } else if (safeState.snake.some((segment) => positionsEqual(segment, safeState.food))) {
-    safeState.food = placeFood(safeState.snake);
-  }
-
-  if (!safeState.foodEmoji) {
-    safeState.foodEmoji = randomEmoji();
+    safeState.food = placeFood(safeState.snake, safeState.trail, safeState.totem);
   }
 
   if (typeof safeState.score !== "number" || safeState.score < 0) {
@@ -254,6 +294,16 @@ function sanitizeStateForStart(state) {
   safeState.running = true;
   safeState.paused = false;
   safeState.countdown = false;
+  safeState.trail = [];
+  safeState.overheatUntil = 0;
+  safeState.lastTrailPenalty = 0;
+  safeState.stormActiveUntil = 0;
+  safeState.totem = null;
+  safeState.gateCharge = 0;
+  safeState.gateExpiresAt = 0;
+  safeState.startTime = 0;
+  safeState.minStepMs = BASE_STEP_MS;
+  safeState.lastDirectionChange = 0;
 
   return safeState;
 }
@@ -264,9 +314,13 @@ function startGame(state = defaultState()) {
   gameState = {
     ...mergedState,
   };
-  lastTime = performance.now();
+  const now = performance.now();
+  gameState.nextStormAt = now + randomBetween(STORM_MIN_MS, STORM_MAX_MS);
+  gameState.nextTotemAt = now + randomBetween(TOTEM_MIN_MS, TOTEM_MAX_MS);
+  lastTime = now;
   accumulator = 0;
   updateScore();
+  updateGateChargeUI();
   showScreen(gameScreen);
   hidePauseOverlay();
   startCountdown();
@@ -284,6 +338,7 @@ function endGame() {
   stopLoop();
   updateBestScore(gameState.score);
   finalScore.textContent = gameState.score.toString();
+  updateSummaryStats();
   clearSavedGame();
   showScreen(summaryScreen);
   playGameOverEffects();
@@ -311,9 +366,16 @@ function stopGame({ save = true } = {}) {
   stopLoop();
 }
 
-function getStepDuration() {
+function getStepDuration(now) {
   const points = gameState ? gameState.score / 10 : 0;
-  return Math.max(MIN_STEP_MS, BASE_STEP_MS - points * RAMP_PER_POINT);
+  let duration = Math.max(MIN_STEP_MS, BASE_STEP_MS - points * RAMP_PER_POINT);
+  if (now < gameState.stormActiveUntil) {
+    duration *= STORM_SPEED_FACTOR;
+  }
+  if (now < gameState.overheatUntil) {
+    duration *= OVERHEAT_SPEED_FACTOR;
+  }
+  return duration;
 }
 
 function loop(timestamp) {
@@ -324,10 +386,12 @@ function loop(timestamp) {
   lastTime = timestamp;
 
   if (!gameState.paused && !gameState.countdown) {
+    updateStateTimers(timestamp);
     accumulator += delta;
-    const stepDuration = getStepDuration();
+    const stepDuration = getStepDuration(timestamp);
+    gameState.minStepMs = Math.min(gameState.minStepMs, stepDuration);
     while (accumulator >= stepDuration) {
-      step();
+      step(timestamp);
       accumulator -= stepDuration;
     }
     updateFireworks(delta);
@@ -335,17 +399,61 @@ function loop(timestamp) {
     accumulator = 0;
   }
 
-  draw();
+  draw(timestamp);
   rafId = requestAnimationFrame(loop);
 }
 
-function step() {
+function updateStateTimers(now) {
+  trimTrail(now);
+  updateStorm(now);
+  updateTotem(now);
+  if (gameState.gateCharge > 0 && now > gameState.gateExpiresAt) {
+    gameState.gateCharge = 0;
+    updateGateChargeUI();
+  }
+}
+
+function updateStorm(now) {
+  if (now >= gameState.nextStormAt) {
+    gameState.stormActiveUntil = now + randomBetween(STORM_DURATION_MIN, STORM_DURATION_MAX);
+    gameState.nextStormAt = now + randomBetween(STORM_MIN_MS, STORM_MAX_MS);
+  }
+  const stormActive = now < gameState.stormActiveUntil;
+  if (gameScreen) {
+    gameScreen.classList.toggle("storm-active", stormActive);
+  }
+  if (stormOverlay) {
+    stormOverlay.setAttribute("aria-hidden", String(!stormActive));
+  }
+}
+
+function updateTotem(now) {
+  if (gameState.totem && now > gameState.totem.expiresAt) {
+    gameState.totem = null;
+    gameState.nextTotemAt = now + randomBetween(TOTEM_MIN_MS, TOTEM_MAX_MS);
+  }
+  if (!gameState.totem && now >= gameState.nextTotemAt) {
+    gameState.totem = placeTotem(gameState.snake, gameState.trail, gameState.food);
+    gameState.totem.expiresAt = now + TOTEM_DURATION_MS;
+    gameState.nextTotemAt = now + randomBetween(TOTEM_MIN_MS, TOTEM_MAX_MS);
+  }
+}
+
+function step(now) {
   gameState.direction = gameState.queuedDirection;
   const head = gameState.snake[0];
-  const next = { x: head.x + gameState.direction.x, y: head.y + gameState.direction.y };
+  let next = { x: head.x + gameState.direction.x, y: head.y + gameState.direction.y };
 
   const hitWall = next.x < 0 || next.x >= gridSize || next.y < 0 || next.y >= gridSize;
-  if (hitWall) {
+  const canUseGate = gameState.gateCharge > 0 && now < gameState.gateExpiresAt;
+  if (hitWall && canUseGate) {
+    gameState.gateCharge = 0;
+    updateGateChargeUI();
+    next = {
+      x: (next.x + gridSize) % gridSize,
+      y: (next.y + gridSize) % gridSize,
+    };
+  } else if (hitWall) {
     endGame();
     return;
   }
@@ -356,14 +464,26 @@ function step() {
     return;
   }
 
+  if (isTrailHit(next, now)) {
+    applyTrailPenalty(now);
+  }
+
+  gameState.trail.push({ x: head.x, y: head.y, time: now });
   gameState.snake.unshift(next);
+
+  if (gameState.totem && positionsEqual(next, gameState.totem)) {
+    gameState.gateCharge = 1;
+    gameState.gateExpiresAt = now + GATE_DURATION_MS;
+    updateGateChargeUI();
+    gameState.totem = null;
+    playPowerupEffects();
+  }
 
   if (positionsEqual(next, gameState.food)) {
     gameState.score += 10;
     spawnFireworks(next);
     triggerScoreFireworks();
     gameState.food = placeFood();
-    gameState.foodEmoji = randomEmoji();
     playEatEffects();
   } else {
     gameState.snake.pop();
@@ -373,14 +493,43 @@ function step() {
   saveGame();
 }
 
+function isTrailHit(position, now) {
+  return gameState.trail.some(
+    (segment) =>
+      now - segment.time <= TRAIL_LIFETIME_MS && positionsEqual(segment, position)
+  );
+}
+
+function applyTrailPenalty(now) {
+  if (now - gameState.lastTrailPenalty < TRAIL_PENALTY_COOLDOWN_MS) {
+    return;
+  }
+  gameState.overheatUntil = Math.max(gameState.overheatUntil, now + OVERHEAT_MS);
+  gameState.lastTrailPenalty = now;
+  playPenaltyEffects();
+}
+
 function playEatEffects() {
-  vibrate(18);
-  playTone(540, 90, "triangle", 0.05);
+  vibrate(15);
+  playTone(620, 80, "triangle", 0.06);
+}
+
+function playPenaltyEffects() {
+  vibrate(35);
+  playTone(130, 160, "sawtooth", 0.05);
+}
+
+function playPowerupEffects() {
+  vibrate(22);
+  playTone(380, 110, "triangle", 0.06);
+  playTone(520, 120, "triangle", 0.06, 90);
 }
 
 function playGameOverEffects() {
-  vibrate(50);
-  playTone(160, 220, "sawtooth", 0.08);
+  vibrate(60);
+  playTone(220, 180, "sawtooth", 0.07);
+  playTone(160, 200, "sawtooth", 0.07, 120);
+  playTone(70, 220, "sine", 0.08, 220);
 }
 
 function getAudioContext() {
@@ -390,7 +539,7 @@ function getAudioContext() {
   return audioContext;
 }
 
-function playTone(frequency, duration, type, volume) {
+function playTone(frequency, duration, type, volume, delay = 0) {
   if (!soundEnabled) {
     return;
   }
@@ -405,9 +554,10 @@ function playTone(frequency, duration, type, volume) {
   gain.gain.value = volume;
   oscillator.connect(gain);
   gain.connect(ctx.destination);
-  oscillator.start();
-  gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration / 1000);
-  oscillator.stop(ctx.currentTime + duration / 1000);
+  const startTime = ctx.currentTime + delay / 1000;
+  oscillator.start(startTime);
+  gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration / 1000);
+  oscillator.stop(startTime + duration / 1000);
 }
 
 function vibrate(pattern) {
@@ -418,14 +568,14 @@ function vibrate(pattern) {
 }
 
 function spawnFireworks(position) {
-  const colors = ["#ff7a7a", "#ffd86b", "#8dffb7", "#6bb6ff", "#d48dff"];
+  const colors = ["#ff7a63", "#ffd166", "#3de7ff", "#ff4fd8"];
   const centerX = position.x * cellSize + cellSize / 2;
   const centerY = position.y * cellSize + cellSize / 2;
-  const burstCount = 18;
+  const burstCount = 16;
 
   for (let i = 0; i < burstCount; i += 1) {
     const angle = (Math.PI * 2 * i) / burstCount;
-    const speed = 1.5 + Math.random() * 1.8;
+    const speed = 1.4 + Math.random() * 1.6;
     fireworks.push({
       x: centerX,
       y: centerY,
@@ -452,41 +602,59 @@ function updateFireworks(delta) {
   }
 }
 
-function placeFood(snake = gameState.snake) {
+function placeFood(snake = gameState.snake, trail = gameState.trail, totem = gameState.totem) {
   let position = randomFoodPosition();
-  while (snake.some((segment) => positionsEqual(segment, position))) {
+  while (
+    snake.some((segment) => positionsEqual(segment, position)) ||
+    trail.some((segment) => positionsEqual(segment, position)) ||
+    (totem && positionsEqual(totem, position))
+  ) {
     position = randomFoodPosition();
   }
   return position;
 }
 
-function draw() {
+function placeTotem(snake, trail, food) {
+  let position = randomFoodPosition();
+  while (
+    snake.some((segment) => positionsEqual(segment, position)) ||
+    trail.some((segment) => positionsEqual(segment, position)) ||
+    positionsEqual(food, position)
+  ) {
+    position = randomFoodPosition();
+  }
+  return { ...position };
+}
+
+function trimTrail(now) {
+  gameState.trail = gameState.trail.filter(
+    (segment) => now - segment.time <= TRAIL_LIFETIME_MS
+  );
+}
+
+function draw(timestamp) {
   context.clearRect(0, 0, canvas.width, canvas.height);
 
-  context.fillStyle = "#dbe5ff";
+  const gradient = context.createLinearGradient(0, 0, canvas.width, canvas.height);
+  gradient.addColorStop(0, "#060610");
+  gradient.addColorStop(0.5, "#120c24");
+  gradient.addColorStop(1, "#0b0a18");
+  context.fillStyle = gradient;
   context.fillRect(0, 0, canvas.width, canvas.height);
 
-  gameState.snake.forEach((segment, index) => {
-    context.fillStyle = rainbow[index % rainbow.length];
-    context.beginPath();
-    context.roundRect(
-      segment.x * cellSize + 2,
-      segment.y * cellSize + 2,
-      cellSize - 4,
-      cellSize - 4,
-      6
-    );
-    context.fill();
-  });
+  context.fillStyle = "rgba(255, 255, 255, 0.03)";
+  for (let x = 0; x < gridSize; x += 1) {
+    for (let y = 0; y < gridSize; y += 1) {
+      if ((x + y) % 2 === 0) {
+        context.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+      }
+    }
+  }
 
-  context.font = "20px 'Segoe UI Emoji', 'Apple Color Emoji', sans-serif";
-  context.textAlign = "center";
-  context.textBaseline = "middle";
-  context.fillText(
-    gameState.foodEmoji,
-    gameState.food.x * cellSize + cellSize / 2,
-    gameState.food.y * cellSize + cellSize / 2
-  );
+  drawTrail(timestamp);
+  drawFood();
+  drawTotem();
+  drawSnake();
 
   fireworks.forEach((spark) => {
     const alpha = Math.max(spark.life / spark.maxLife, 0);
@@ -495,6 +663,93 @@ function draw() {
     context.arc(spark.x, spark.y, spark.size, 0, Math.PI * 2);
     context.fill();
   });
+
+  if (timestamp < gameState.overheatUntil) {
+    context.fillStyle = "rgba(255, 116, 77, 0.08)";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+  }
+}
+
+function drawTrail(now) {
+  gameState.trail.forEach((segment) => {
+    const age = now - segment.time;
+    if (age > TRAIL_LIFETIME_MS) {
+      return;
+    }
+    const alpha = 1 - age / TRAIL_LIFETIME_MS;
+    const glow = context.createRadialGradient(
+      segment.x * cellSize + cellSize / 2,
+      segment.y * cellSize + cellSize / 2,
+      2,
+      segment.x * cellSize + cellSize / 2,
+      segment.y * cellSize + cellSize / 2,
+      cellSize
+    );
+    glow.addColorStop(0, `rgba(255, 148, 84, ${0.45 * alpha})`);
+    glow.addColorStop(1, "rgba(255, 148, 84, 0)");
+    context.fillStyle = glow;
+    context.fillRect(
+      segment.x * cellSize,
+      segment.y * cellSize,
+      cellSize,
+      cellSize
+    );
+  });
+}
+
+function drawFood() {
+  const centerX = gameState.food.x * cellSize + cellSize / 2;
+  const centerY = gameState.food.y * cellSize + cellSize / 2;
+  const orb = context.createRadialGradient(centerX, centerY, 2, centerX, centerY, cellSize);
+  orb.addColorStop(0, "rgba(255, 255, 255, 0.9)");
+  orb.addColorStop(0.2, "rgba(255, 180, 84, 0.95)");
+  orb.addColorStop(0.6, "rgba(255, 96, 88, 0.5)");
+  orb.addColorStop(1, "rgba(255, 96, 88, 0)");
+  context.fillStyle = orb;
+  context.beginPath();
+  context.arc(centerX, centerY, cellSize * 0.4, 0, Math.PI * 2);
+  context.fill();
+}
+
+function drawTotem() {
+  if (!gameState.totem) {
+    return;
+  }
+  const centerX = gameState.totem.x * cellSize + cellSize / 2;
+  const centerY = gameState.totem.y * cellSize + cellSize / 2;
+  context.save();
+  context.strokeStyle = "rgba(61, 231, 255, 0.9)";
+  context.lineWidth = 2;
+  context.shadowColor = "rgba(61, 231, 255, 0.8)";
+  context.shadowBlur = 10;
+  context.beginPath();
+  context.moveTo(centerX, centerY - 10);
+  context.lineTo(centerX + 10, centerY);
+  context.lineTo(centerX, centerY + 10);
+  context.lineTo(centerX - 10, centerY);
+  context.closePath();
+  context.stroke();
+  context.restore();
+}
+
+function drawSnake() {
+  gameState.snake.forEach((segment, index) => {
+    const isHead = index === 0;
+    const color = emberColors[index % emberColors.length];
+    context.fillStyle = color;
+    context.shadowColor = isHead ? "rgba(255, 79, 216, 0.6)" : "rgba(255, 180, 84, 0.3)";
+    context.shadowBlur = isHead ? 14 : 8;
+    context.beginPath();
+    context.roundRect(
+      segment.x * cellSize + 2,
+      segment.y * cellSize + 2,
+      cellSize - 4,
+      cellSize - 4,
+      8
+    );
+    context.fill();
+  });
+  context.shadowBlur = 0;
 }
 
 function hexToRgb(hex) {
@@ -534,6 +789,7 @@ function finishCountdown() {
     countdownOverlay.setAttribute("aria-hidden", "true");
   }
   gameState.countdown = false;
+  gameState.startTime = performance.now();
   lastTime = performance.now();
   accumulator = 0;
 }
@@ -582,6 +838,28 @@ function updateSoundToggle() {
 
 function updateHapticsToggle() {
   hapticsToggle.textContent = hapticsEnabled ? "Haptics: On" : "Haptics: Off";
+}
+
+function updateSummaryStats() {
+  if (summaryLine) {
+    summaryLine.textContent = summaryLines[Math.floor(Math.random() * summaryLines.length)];
+  }
+  if (runTimeSummary) {
+    const endTime = performance.now();
+    const duration = Math.max(0, endTime - (gameState.startTime || endTime));
+    runTimeSummary.textContent = formatTime(duration);
+  }
+  if (maxIntensitySummary) {
+    const intensity = Math.round(1000 / Math.max(gameState.minStepMs, MIN_STEP_MS));
+    maxIntensitySummary.textContent = intensity.toString();
+  }
+}
+
+function formatTime(ms) {
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
 function bindButtons() {
@@ -655,9 +933,11 @@ function bindButtons() {
       ArrowRight: { x: 1, y: 0 },
     };
     if (keyMap[event.key]) {
+      event.preventDefault();
       applyDirection(keyMap[event.key]);
     }
     if (event.key === " ") {
+      event.preventDefault();
       setPaused(!gameState?.paused);
     }
   });
@@ -697,8 +977,9 @@ function bindButtons() {
     applyDirection(nextDirection);
   };
 
-  canvas.addEventListener("touchstart", trackTouchStart, { passive: true });
-  canvas.addEventListener("touchend", trackTouchEnd, { passive: true });
+  const touchTarget = gameScreen || canvas;
+  touchTarget.addEventListener("touchstart", trackTouchStart, { passive: true });
+  touchTarget.addEventListener("touchend", trackTouchEnd, { passive: true });
 }
 
 function showResumeOption() {
