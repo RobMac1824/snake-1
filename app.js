@@ -10,8 +10,7 @@ const startButton = document.getElementById("startButton");
 const resumeButton = document.getElementById("resumeButton");
 const restartButton = document.getElementById("restartButton");
 const menuButton = document.getElementById("menuButton");
-const joystick = document.getElementById("joystick");
-const joystickThumb = document.getElementById("joystickThumb");
+const dpadButtons = document.querySelectorAll(".dpad__button");
 
 const gridSize = 18;
 const cellSize = canvas.width / gridSize;
@@ -31,7 +30,7 @@ let gameState = null;
 let rafId = null;
 let lastTime = 0;
 let accumulator = 0;
-const stepDuration = 140;
+const stepDuration = 315;
 const saveKey = "rainbow-snake-save";
 
 const defaultState = () => ({
@@ -120,12 +119,71 @@ function showScreen(screen) {
   }
 }
 
+function sanitizeStateForStart(state) {
+  let sanitizedState = state;
+  try {
+    sanitizedState = structuredClone(state);
+  } catch {
+    sanitizedState = JSON.parse(JSON.stringify(state));
+  }
+
+  const baseState = defaultState();
+  const safeState = {
+    ...baseState,
+    ...sanitizedState,
+  };
+
+  if (!Array.isArray(safeState.snake) || safeState.snake.length === 0) {
+    safeState.snake = [{ x: 5, y: 5 }];
+  }
+
+  const direction = safeState.direction ?? safeState.dir ?? { x: 0, y: 0 };
+  const dx = Number(direction.x ?? direction.dx ?? 0);
+  const dy = Number(direction.y ?? direction.dy ?? 0);
+  if ((dx === 0 && dy === 0) || Math.abs(dx) + Math.abs(dy) !== 1) {
+    safeState.direction = { x: 1, y: 0 };
+  } else {
+    safeState.direction = { x: dx, y: dy };
+  }
+
+  const queuedDirection =
+    safeState.queuedDirection ?? safeState.nextDir ?? safeState.direction;
+  const qx = Number(queuedDirection.x ?? queuedDirection.dx ?? safeState.direction.x);
+  const qy = Number(queuedDirection.y ?? queuedDirection.dy ?? safeState.direction.y);
+  if ((qx === 0 && qy === 0) || Math.abs(qx) + Math.abs(qy) !== 1) {
+    safeState.queuedDirection = safeState.direction;
+  } else {
+    safeState.queuedDirection = { x: qx, y: qy };
+  }
+
+  if (
+    !safeState.food ||
+    typeof safeState.food.x !== "number" ||
+    typeof safeState.food.y !== "number"
+  ) {
+    safeState.food = placeFood(safeState.snake);
+  } else if (safeState.snake.some((segment) => positionsEqual(segment, safeState.food))) {
+    safeState.food = placeFood(safeState.snake);
+  }
+
+  if (!safeState.foodEmoji) {
+    safeState.foodEmoji = randomEmoji();
+  }
+
+  if (typeof safeState.score !== "number" || safeState.score < 0) {
+    safeState.score = 0;
+  }
+
+  return safeState;
+}
+
 function startGame(state = defaultState()) {
   if (rafId) {
     cancelAnimationFrame(rafId);
   }
+  const mergedState = sanitizeStateForStart(state);
   gameState = {
-    ...state,
+    ...mergedState,
     running: true,
   };
   lastTime = performance.now();
@@ -177,7 +235,7 @@ function step() {
     return;
   }
 
-  const hitSelf = gameState.snake.some((segment) => positionsEqual(segment, next));
+  const hitSelf = gameState.snake.slice(1).some((segment) => positionsEqual(segment, next));
   if (hitSelf) {
     endGame();
     return;
@@ -197,9 +255,9 @@ function step() {
   saveGame();
 }
 
-function placeFood() {
+function placeFood(snake = gameState.snake) {
   let position = randomFoodPosition();
-  while (gameState.snake.some((segment) => positionsEqual(segment, position))) {
+  while (snake.some((segment) => positionsEqual(segment, position))) {
     position = randomFoodPosition();
   }
   return position;
@@ -234,60 +292,6 @@ function draw() {
   );
 }
 
-function handleJoystick(event) {
-  const rect = joystick.getBoundingClientRect();
-  const centerX = rect.left + rect.width / 2;
-  const centerY = rect.top + rect.height / 2;
-  const maxDistance = rect.width / 2 - joystickThumb.offsetWidth / 2;
-  const deltaX = event.clientX - centerX;
-  const deltaY = event.clientY - centerY;
-  const distance = Math.min(Math.hypot(deltaX, deltaY), maxDistance);
-  const angle = Math.atan2(deltaY, deltaX);
-
-  const thumbX = Math.cos(angle) * distance;
-  const thumbY = Math.sin(angle) * distance;
-  joystickThumb.style.transform = `translate(${thumbX}px, ${thumbY}px)`;
-
-  const absX = Math.abs(deltaX);
-  const absY = Math.abs(deltaY);
-  if (absX > absY) {
-    applyDirection({ x: deltaX > 0 ? 1 : -1, y: 0 });
-  } else {
-    applyDirection({ x: 0, y: deltaY > 0 ? 1 : -1 });
-  }
-}
-
-function resetJoystick() {
-  joystickThumb.style.transform = "translate(0, 0)";
-}
-
-function bindJoystick() {
-  let active = false;
-
-  joystick.addEventListener("pointerdown", (event) => {
-    active = true;
-    joystick.setPointerCapture(event.pointerId);
-    handleJoystick(event);
-  });
-
-  joystick.addEventListener("pointermove", (event) => {
-    if (!active) {
-      return;
-    }
-    handleJoystick(event);
-  });
-
-  joystick.addEventListener("pointerup", () => {
-    active = false;
-    resetJoystick();
-  });
-
-  joystick.addEventListener("pointercancel", () => {
-    active = false;
-    resetJoystick();
-  });
-}
-
 function bindButtons() {
   startButton.addEventListener("click", () => {
     clearSavedGame();
@@ -309,6 +313,22 @@ function bindButtons() {
     showScreen(menuScreen);
   });
 
+  const directionMap = {
+    up: { x: 0, y: -1 },
+    down: { x: 0, y: 1 },
+    left: { x: -1, y: 0 },
+    right: { x: 1, y: 0 },
+  };
+
+  dpadButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const direction = button.dataset.direction;
+      if (direction && directionMap[direction]) {
+        applyDirection(directionMap[direction]);
+      }
+    });
+  });
+
   document.addEventListener("keydown", (event) => {
     const keyMap = {
       ArrowUp: { x: 0, y: -1 },
@@ -328,7 +348,6 @@ function showResumeOption() {
 }
 
 bindButtons();
-bindJoystick();
 showResumeOption();
 showScreen(menuScreen);
 
