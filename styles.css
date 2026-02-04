@@ -665,6 +665,8 @@ button {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  max-height: min(240px, 40vh);
+  overflow-y: auto;
 }
 
 .input-field {
