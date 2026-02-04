@@ -645,6 +645,7 @@ button {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.08);
   font-size: 0.9rem;
+  color: var(--text);
 }
 
 .leaderboard-row span:last-child {
@@ -665,8 +666,7 @@ button {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: min(240px, 40vh);
-  overflow-y: auto;
+  overflow: visible;
 }
 
 .input-field {
@@ -817,6 +817,12 @@ button {
   button {
     min-width: 160px;
   }
+
+  /* Desktop-only scroll to avoid iOS Safari overflow painting issues. */
+  .leaderboard-body {
+    max-height: min(240px, 40vh);
+    overflow-y: auto;
+  }
 }
 
 @media (max-width: 480px) {
@@ -880,35 +886,4 @@ button {
   }
 }
 
-/* DEBUG: force leaderboard visibility + reveal stacking/clip issues. */
-.leaderboard-section,
-.leaderboard-card,
-.leaderboard-table,
-.leaderboard-body,
-.leaderboard-row {
-  outline: 1px solid rgba(255, 79, 216, 0.85);
-  outline-offset: -1px;
-}
-
-.leaderboard-row {
-  background: rgba(255, 79, 216, 0.2);
-  color: #ffffff;
-}
-
-.leaderboard-card,
-.leaderboard-table,
-.leaderboard-body,
-.leaderboard-row,
-.screen--menu {
-  position: relative;
-  z-index: 50;
-}
-
-.app,
-.stage,
-.screen--menu {
-  overflow: visible;
-  clip-path: none;
-  mask-image: none;
-  -webkit-mask-image: none;
-}
+/* Keep layout clipping defaults to preserve the iPhone-safe proportions. */
