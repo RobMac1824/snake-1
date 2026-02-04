@@ -877,32 +877,36 @@ button {
     min-height: 100dvh;
   }
 }
-/* Make sure leaderboard rows actually show */
-.leaderboard-body {
-  display: block;          /* or flex if you prefer */
-  min-height: 60px;
-}
 
-.leaderboard-row {
-  display: grid;
-  grid-template-columns: 40px 1fr 100px;
-  gap: 12px;
-  padding: 10px 12px;
-  color: rgba(255, 255, 255, 0.92);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-}
-
-.leaderboard-row span:last-child {
-  text-align: right;
-}
+/* DEBUG: force leaderboard visibility + reveal stacking/clip issues. */
+.leaderboard-section,
 .leaderboard-card,
-.leaderboard-table {
-  position: relative;
-  z-index: 1;
-}
-
+.leaderboard-table,
 .leaderboard-body,
 .leaderboard-row {
+  outline: 1px solid rgba(255, 79, 216, 0.85);
+  outline-offset: -1px;
+}
+
+.leaderboard-row {
+  background: rgba(255, 79, 216, 0.2);
+  color: #ffffff;
+}
+
+.leaderboard-card,
+.leaderboard-table,
+.leaderboard-body,
+.leaderboard-row,
+.screen--menu {
   position: relative;
-  z-index: 5;
+  z-index: 50;
+}
+
+.app,
+.stage,
+.screen--menu {
+  overflow: visible;
+  clip-path: none;
+  mask-image: none;
+  -webkit-mask-image: none;
 }
