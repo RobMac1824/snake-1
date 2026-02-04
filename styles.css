@@ -895,3 +895,14 @@ button {
 .leaderboard-row span:last-child {
   text-align: right;
 }
+.leaderboard-card,
+.leaderboard-table {
+  position: relative;
+  z-index: 1;
+}
+
+.leaderboard-body,
+.leaderboard-row {
+  position: relative;
+  z-index: 5;
+}
