@@ -42,6 +42,8 @@ const submitScoreButton = document.getElementById("submitScoreButton");
 const submitScoreStatus = document.getElementById("submitScoreStatus");
 const leaderboardBody = document.getElementById("leaderboardBody");
 const leaderboardStatus = document.getElementById("leaderboardStatus");
+const leaderboardToggle = document.getElementById("leaderboardToggle");
+const leaderboardTable = document.getElementById("leaderboardTable");
 
 const VERSION = "0.8";
 const gridSize = 18;
@@ -228,6 +230,16 @@ function setLeaderboardStatus(message, tone = "muted") {
   leaderboardStatus.dataset.tone = tone;
 }
 
+function collapseLeaderboard() {
+  if (leaderboardTable) {
+    leaderboardTable.hidden = true;
+  }
+  if (leaderboardToggle) {
+    leaderboardToggle.setAttribute("aria-expanded", "false");
+  }
+  setLeaderboardStatus("Tap to view");
+}
+
 function renderLeaderboard(rows) {
   if (!leaderboardBody) {
     return;
@@ -262,6 +274,8 @@ async function loadLeaderboard() {
     return [];
   }
 
+  setLeaderboardStatus("Loading…");
+
   const { data, error } = await supabaseClient
     .from("leaderboard_scores")
     .select("username, high_score")
@@ -274,8 +288,10 @@ async function loadLeaderboard() {
     return [];
   }
 
+  const rows = data || [];
+  renderLeaderboard(rows);
   setLeaderboardStatus("Top 50");
-  return data || [];
+  return rows;
 }
 
 
@@ -557,7 +573,7 @@ function showScreen(screen) {
   document.body.style.touchAction = isGame ? "none" : "";
   if (screen === menuScreen) {
     showResumeOption();
-    loadLeaderboard();
+    collapseLeaderboard();
   }
 }
 
@@ -1311,6 +1327,17 @@ function bindButtons() {
   changeUsernameButton.addEventListener("click", () => {
     openUsernameGate({ isChange: true });
   });
+
+  if (leaderboardToggle && leaderboardTable) {
+    leaderboardToggle.addEventListener("click", () => {
+      const isOpen = leaderboardTable.hidden === false;
+      leaderboardTable.hidden = isOpen;
+      leaderboardToggle.setAttribute("aria-expanded", String(!isOpen));
+      if (!isOpen) {
+        loadLeaderboard();
+      }
+    });
+  }
 
   submitScoreButton.addEventListener("click", () => {
     if (!gameState) {

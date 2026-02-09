@@ -63,11 +63,11 @@
         </div>
         <div class="leaderboard-section">
           <div class="leaderboard-card">
-            <div class="leaderboard-header">
+            <button class="leaderboard-toggle" id="leaderboardToggle" type="button" aria-expanded="false">
               <span class="hero-eyebrow">Global Leaderboard</span>
-              <span class="leaderboard-status" id="leaderboardStatus">Loading…</span>
-            </div>
-            <div class="leaderboard-table" role="table" aria-label="Top 50 leaderboard">
+              <span class="leaderboard-status" id="leaderboardStatus">Tap to view</span>
+            </button>
+            <div class="leaderboard-table" id="leaderboardTable" role="table" aria-label="Top 50 leaderboard" hidden>
               <div class="leaderboard-row leaderboard-head" role="row">
                 <span role="columnheader">#</span>
                 <span role="columnheader">Runner</span>
