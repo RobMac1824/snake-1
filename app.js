@@ -64,7 +64,7 @@ const STORM_MAX_MS = 35000;
 const STORM_DURATION_MIN = 3000;
 const STORM_DURATION_MAX = 5000;
 const STORM_SPEED_FACTOR = 0.88;
-const OVERHEAT_SPEED_FACTOR = 1.35;
+const OVERHEAT_SPEED_FACTOR = 0.74;
 const TOTEM_MIN_MS = 18000;
 const TOTEM_MAX_MS = 26000;
 const TOTEM_DURATION_MS = 9000;
@@ -236,14 +236,22 @@ function renderLeaderboard(rows) {
   if (!rows.length) {
     const emptyRow = document.createElement("div");
     emptyRow.className = "leaderboard-row";
-    emptyRow.innerHTML = "<span>—</span><span>No scores yet</span><span>—</span>";
+    ["—", "No scores yet", "—"].forEach((text) => {
+      const span = document.createElement("span");
+      span.textContent = text;
+      emptyRow.appendChild(span);
+    });
     leaderboardBody.appendChild(emptyRow);
     return;
   }
   rows.forEach((row, index) => {
     const entry = document.createElement("div");
     entry.className = "leaderboard-row";
-    entry.innerHTML = `<span>${index + 1}</span><span>${row.username}</span><span>${row.high_score}</span>`;
+    [String(index + 1), row.username, String(row.high_score)].forEach((text) => {
+      const span = document.createElement("span");
+      span.textContent = text;
+      entry.appendChild(span);
+    });
     leaderboardBody.appendChild(entry);
   });
 }
@@ -271,10 +279,27 @@ async function loadLeaderboard() {
 }
 
 
+function validateScorePayload(username, score) {
+  const normalized = normalizeUsername(username);
+  if (!normalized) {
+    return { valid: false, error: "Invalid username." };
+  }
+  const numScore = typeof score === "string" ? Number(score) : score;
+  if (!Number.isInteger(numScore) || numScore < 0 || numScore > 1_000_000) {
+    return { valid: false, error: "Invalid score." };
+  }
+  return { valid: true, username: normalized, score: numScore };
+}
+
 async function submitScoreViaSupabase(score) {
   try {
     if (!leaderboardUsername) {
       return { ok: false, message: "No username" };
+    }
+
+    const validation = validateScorePayload(leaderboardUsername, score);
+    if (!validation.valid) {
+      return { ok: false, message: validation.error };
     }
 
     const FUNCTION_URL =
@@ -288,8 +313,8 @@ async function submitScoreViaSupabase(score) {
         Authorization: `Bearer ${supabaseAnonKey}`,
       },
       body: JSON.stringify({
-        username: leaderboardUsername,
-        score: score,
+        username: validation.username,
+        score: validation.score,
       }),
     });
 
