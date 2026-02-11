@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EMBER RUN</title>
+    <meta
+      name="description"
+      content="Ember Run — a neon snake game. Ride the ember, collect Fire Orbs, and climb the global leaderboard."
+    />
+    <meta name="theme-color" content="#060610" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="hud">
+        <div class="brand-block">
+          <h1 class="brand marquee">EMBER RUN</h1>
+          <div class="brand-subline station-line">WFM 98.8 FM — Lingo, Lingo</div>
+        </div>
+        <div class="top-actions">
+          <div class="scoreboard" aria-live="polite">
+            <span>Score</span>
+            <strong id="score">0</strong>
+            <span class="best-score" id="bestScoreTop">Best 0</span>
+            <span class="gate-charge" id="gateCharge">Gate Charge: 0</span>
+            <span class="score-fireworks" id="scoreFireworks" aria-hidden="true"></span>
+          </div>
+          <button
+            id="pauseButton"
+            class="ghost pause-button"
+            type="button"
+            aria-pressed="false"
+            hidden
+          >
+            Pause
+          </button>
+        </div>
+      </header>
+
+      <main class="stage">
+        <section class="screen screen--menu is-active" id="menuScreen" aria-hidden="false">
+          <div class="menu-hero">
+            <div class="hero-card">
+              <span class="hero-eyebrow">Festival Poster</span>
+              <p class="hero-tagline">Ride the ember. Don’t bite the body. Respect the trail.</p>
+              <div class="menu-actions">
+                <button id="startButton" class="primary">Start Game</button>
+                <button id="resumeButton" class="ghost" hidden>Resume Saved Game</button>
+              </div>
+              <div class="menu-stats">
+                <span class="menu-stat-label">Best Score</span>
+                <strong id="bestScoreMenu">0</strong>
+              </div>
+              <div class="menu-profile">
+                <div class="menu-stat-label">Runner</div>
+                <strong id="usernameLabel">---</strong>
+                <button id="changeUsernameButton" class="ghost" type="button">
+                  Change Username
+                </button>
+              </div>
+              <div class="menu-toggles">
+                <button id="soundToggle" class="ghost" type="button">Sound: On</button>
+                <button id="hapticsToggle" class="ghost" type="button">Haptics: On</button>
+              </div>
+              <details class="how-to-play">
+                <summary>How to Play</summary>
+                <p>
+                  Glide through neon dust, collect Fire Orbs, and avoid your body. Fresh ember trail
+                  stings with heat, and Totem Gates let you pass one wall during storms.
+                </p>
+              </details>
+            </div>
+          </div>
+          <div class="leaderboard-section">
+            <div class="leaderboard-card">
+              <div class="leaderboard-header">
+                <span class="hero-eyebrow">Global Leaderboard</span>
+                <span class="leaderboard-status" id="leaderboardStatus">Loading…</span>
+              </div>
+              <div class="leaderboard-table" role="table" aria-label="Top 50 leaderboard">
+                <div class="leaderboard-row leaderboard-head" role="row">
+                  <span role="columnheader">#</span>
+                  <span role="columnheader">Runner</span>
+                  <span role="columnheader">High Score</span>
+                </div>
+                <div id="leaderboardBody" class="leaderboard-body" role="rowgroup"></div>
+              </div>
+            </div>
+          </div>
+          <div class="menu-footer">
+            <div class="version" id="versionLabel"></div>
+          </div>
+        </section>
+
+        <section class="screen screen--game" id="gameScreen" aria-hidden="true">
+          <p class="game-hint">Swipe to steer.</p>
+          <canvas
+            id="gameCanvas"
+            width="360"
+            height="360"
+            aria-label="Snake game — use arrow keys or swipe to steer"
+            role="application"
+          ></canvas>
+          <div
+            class="toast"
+            id="powerToast"
+            role="status"
+            aria-live="polite"
+            aria-hidden="true"
+          ></div>
+          <div class="storm-overlay" id="stormOverlay" aria-hidden="true"></div>
+          <div
+            class="overlay overlay--countdown"
+            id="countdownOverlay"
+            aria-live="assertive"
+            aria-hidden="true"
+          >
+            <div class="overlay-card">
+              <span id="countdownText">3</span>
+            </div>
+          </div>
+          <div class="overlay overlay--pause" id="pauseOverlay" aria-hidden="true">
+            <div class="overlay-card">
+              <h3>Paused</h3>
+              <div class="menu-actions">
+                <button id="resumePauseButton" class="primary" type="button">Resume</button>
+                <button id="pauseMenuButton" class="ghost" type="button">Main Menu</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="screen screen--summary" id="summaryScreen" aria-hidden="true">
+          <h2>There's a snake in my boots!</h2>
+          <p id="summaryLine">there’s a snake in my boots.</p>
+          <p class="summary-new-best" id="newBestLine" hidden>NEW BEST — lingo, lingo.</p>
+          <div class="final-score" id="finalScore">0</div>
+          <div class="score-submit">
+            <button id="submitScoreButton" class="primary" type="button">Submit Score</button>
+            <span class="form-hint" id="submitScoreStatus"
+              >Send your score to the global board.</span
+            >
+          </div>
+          <div class="summary-meta">
+            <div class="summary-stat">
+              <span>Best</span>
+              <strong id="bestScoreSummary">0</strong>
+            </div>
+            <div class="summary-stat">
+              <span>Run Time</span>
+              <strong id="runTimeSummary">0:00</strong>
+            </div>
+            <div class="summary-stat">
+              <span>Max Intensity</span>
+              <strong id="maxIntensitySummary">0</strong>
+            </div>
+          </div>
+          <div class="menu-actions">
+            <button id="restartButton" class="primary">Play Again</button>
+            <button id="menuButton" class="ghost">Main Menu</button>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="overlay overlay--username" id="usernameOverlay" aria-hidden="true">
+      <div class="overlay-card">
+        <span class="hero-eyebrow">Leaderboard Identity</span>
+        <h3>Pick a username</h3>
+        <p class="form-hint">Used for the global leaderboard. 1–24 characters.</p>
+        <p class="form-hint" id="usernameError" hidden></p>
+        <label class="input-field">
+          <span class="sr-only">Username</span>
+          <input id="usernameInput" type="text" maxlength="24" autocomplete="nickname" />
+        </label>
+        <p class="warning-text" id="usernameWarning" hidden>
+          Changing your name creates a new leaderboard identity.
+        </p>
+        <div class="menu-actions">
+          <button id="saveUsernameButton" class="primary" type="button">Save Username</button>
+          <button id="cancelUsernameButton" class="ghost" type="button">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      window.SUPABASE_CONFIG = {
+        url: "https://cqfcyezpcsaxaxrpcebr.supabase.co",
+        anonKey: "sb_publishable_PgxiGMNGhZxW342PKnyUwQ_2bjGRrfQ",
+      };
+    </script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+      integrity="sha384-OLBgp1GsljhM2TJ+sbHjaiH9txEUvgdDTAzHv2P24donTt6/529l+9Ua0vFImLlb"
+      crossorigin="anonymous"
+    ></script>
+    <script src="app.js"></script>
+  </body>
+</html>

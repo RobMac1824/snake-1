@@ -1,0 +1,10 @@
+node_modules
+.git
+.env
+.env.local
+coverage
+tests
+*.md
+.prettierrc
+eslint.config.js
+vitest.config.js

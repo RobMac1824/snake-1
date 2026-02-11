@@ -78,9 +78,8 @@ const hapticsKey = "snakeHapticsEnabled";
 const usernameKey = "emberRunUsername";
 
 const supabaseConfig = window.SUPABASE_CONFIG || {};
-const supabaseUrl = "https://cqfcyezpcsaxaxrpcebr.supabase.co";
-const supabaseAnonKey = "sb_publishable_PgxiGMNGhZxW342PKnyUwQ_2bjGRrfQ";
-
+const supabaseUrl = supabaseConfig.url || "";
+const supabaseAnonKey = supabaseConfig.anonKey || "";
 
 const summaryLines = [
   "The dust wins.",
@@ -124,7 +123,9 @@ async function unlockAudio() {
   if (ctx.state === "suspended") {
     try {
       await ctx.resume();
-    } catch {}
+    } catch (err) {
+      console.warn("AudioContext resume failed:", err);
+    }
   }
 
   try {
@@ -134,7 +135,9 @@ async function unlockAudio() {
     oscillator.connect(gain).connect(ctx.destination);
     oscillator.start();
     oscillator.stop(ctx.currentTime + 0.01);
-  } catch {}
+  } catch (err) {
+    console.warn("Audio unlock oscillator failed:", err);
+  }
 
   audioUnlocked = true;
 }
@@ -243,7 +246,13 @@ function renderLeaderboard(rows) {
   rows.forEach((row, index) => {
     const entry = document.createElement("div");
     entry.className = "leaderboard-row";
-    entry.innerHTML = `<span>${index + 1}</span><span>${row.username}</span><span>${row.high_score}</span>`;
+    const rank = document.createElement("span");
+    rank.textContent = String(index + 1);
+    const name = document.createElement("span");
+    name.textContent = String(row.username);
+    const score = document.createElement("span");
+    score.textContent = String(row.high_score);
+    entry.append(rank, name, score);
     leaderboardBody.appendChild(entry);
   });
 }
@@ -251,25 +260,29 @@ function renderLeaderboard(rows) {
 async function loadLeaderboard() {
   if (!supabaseClient) {
     setLeaderboardStatus("SUPABASE NOT CONFIGURED");
-    return [];
+    return;
   }
 
-  const { data, error } = await supabaseClient
-    .from("leaderboard_scores")
-    .select("username, high_score")
-    .order("high_score", { ascending: false })
-    .limit(50);
+  try {
+    const { data, error } = await supabaseClient
+      .from("leaderboard_scores")
+      .select("username, high_score")
+      .order("high_score", { ascending: false })
+      .limit(50);
 
-  if (error) {
-    console.log("LEADERBOARD ERROR:", error);
-    setLeaderboardStatus(`UNABLE TO LOAD: ${error.message}`);
-    return [];
+    if (error) {
+      console.error("LEADERBOARD ERROR:", error);
+      setLeaderboardStatus(`UNABLE TO LOAD: ${error.message}`);
+      return;
+    }
+
+    setLeaderboardStatus("Top 50");
+    renderLeaderboard(data || []);
+  } catch (err) {
+    console.error("LEADERBOARD FETCH FAILED:", err);
+    setLeaderboardStatus("UNABLE TO LOAD");
   }
-
-  setLeaderboardStatus("Top 50");
-  return data || [];
 }
-
 
 async function submitScoreViaSupabase(score) {
   try {
@@ -277,8 +290,11 @@ async function submitScoreViaSupabase(score) {
       return { ok: false, message: "No username" };
     }
 
-    const FUNCTION_URL =
-      "https://cqfcyezpcsaxaxrpcebr.supabase.co/functions/v1/dynamic-responder";
+    const FUNCTION_URL = supabaseUrl ? `${supabaseUrl}/functions/v1/dynamic-responder` : "";
+
+    if (!FUNCTION_URL) {
+      return { ok: false, message: "Supabase not configured" };
+    }
 
     const res = await fetch(FUNCTION_URL, {
       method: "POST",
@@ -303,7 +319,6 @@ async function submitScoreViaSupabase(score) {
     }
 
     return { ok: true };
-
   } catch (err) {
     console.error("submitScoreViaSupabase failed", err);
     return { ok: false, message: "Unable to submit score." };
@@ -340,18 +355,17 @@ async function submitScore(score) {
     });
     if (!response.ok) {
       let payload = null;
-      let rawText = "";
+      const rawText = await response.text();
       try {
-        payload = await response.json();
+        payload = JSON.parse(rawText);
       } catch {
-        rawText = await response.text().catch(() => "");
+        // response was not JSON
       }
       if (await trySupabaseFallback()) {
         return;
       }
       submitScoreStatus.textContent =
-        payload?.error ||
-        (rawText.trim().length > 0 ? rawText.trim() : "Unable to submit score.");
+        payload?.error || (rawText.trim().length > 0 ? rawText.trim() : "Unable to submit score.");
       return;
     }
     submitScoreStatus.textContent = "Score locked in.";
@@ -564,8 +578,7 @@ function sanitizeStateForStart(state) {
     safeState.direction = { x: dx, y: dy };
   }
 
-  const queuedDirection =
-    safeState.queuedDirection ?? safeState.nextDir ?? safeState.direction;
+  const queuedDirection = safeState.queuedDirection ?? safeState.nextDir ?? safeState.direction;
   const qx = Number(queuedDirection.x ?? queuedDirection.dx ?? safeState.direction.x);
   const qy = Number(queuedDirection.y ?? queuedDirection.dy ?? safeState.direction.y);
   if ((qx === 0 && qy === 0) || Math.abs(qx) + Math.abs(qy) !== 1) {
@@ -809,8 +822,7 @@ function step(now) {
 
 function isTrailHit(position, now) {
   return gameState.trail.some(
-    (segment) =>
-      now - segment.time <= TRAIL_LIFETIME_MS && positionsEqual(segment, position)
+    (segment) => now - segment.time <= TRAIL_LIFETIME_MS && positionsEqual(segment, position),
   );
 }
 
@@ -843,13 +855,7 @@ function playGameOverEffects() {
   sfxGameOver();
 }
 
-function playTone({
-  freq = 440,
-  dur = 0.08,
-  type = "sine",
-  vol = 0.07,
-  slideTo = null,
-}) {
+function playTone({ freq = 440, dur = 0.08, type = "sine", vol = 0.07, slideTo = null }) {
   if (!soundEnabled || !audioUnlocked) {
     return;
   }
@@ -977,9 +983,7 @@ function placeTotem(snake, trail, food) {
 }
 
 function trimTrail(now) {
-  gameState.trail = gameState.trail.filter(
-    (segment) => now - segment.time <= TRAIL_LIFETIME_MS
-  );
+  gameState.trail = gameState.trail.filter((segment) => now - segment.time <= TRAIL_LIFETIME_MS);
 }
 
 function draw(timestamp) {
@@ -1033,17 +1037,12 @@ function drawTrail(now) {
       2,
       segment.x * cellSize + cellSize / 2,
       segment.y * cellSize + cellSize / 2,
-      cellSize
+      cellSize,
     );
     glow.addColorStop(0, `rgba(255, 148, 84, ${0.45 * alpha})`);
     glow.addColorStop(1, "rgba(255, 148, 84, 0)");
     context.fillStyle = glow;
-    context.fillRect(
-      segment.x * cellSize,
-      segment.y * cellSize,
-      cellSize,
-      cellSize
-    );
+    context.fillRect(segment.x * cellSize, segment.y * cellSize, cellSize, cellSize);
   });
 }
 
@@ -1090,13 +1089,17 @@ function drawSnake() {
     context.shadowColor = isHead ? "rgba(255, 79, 216, 0.6)" : "rgba(255, 180, 84, 0.3)";
     context.shadowBlur = isHead ? 14 : 8;
     context.beginPath();
-    context.roundRect(
-      segment.x * cellSize + 2,
-      segment.y * cellSize + 2,
-      cellSize - 4,
-      cellSize - 4,
-      8
-    );
+    if (context.roundRect) {
+      context.roundRect(
+        segment.x * cellSize + 2,
+        segment.y * cellSize + 2,
+        cellSize - 4,
+        cellSize - 4,
+        8,
+      );
+    } else {
+      context.rect(segment.x * cellSize + 2, segment.y * cellSize + 2, cellSize - 4, cellSize - 4);
+    }
     context.fill();
   });
   context.shadowBlur = 0;
@@ -1309,8 +1312,10 @@ function bindButtons() {
       ArrowRight: { x: 1, y: 0 },
     };
     if (keyMap[event.key]) {
-      event.preventDefault();
-      applyDirection(keyMap[event.key]);
+      if (gameState && gameState.running) {
+        event.preventDefault();
+        applyDirection(keyMap[event.key]);
+      }
     }
     if (event.key === " ") {
       event.preventDefault();
