@@ -10,6 +10,15 @@ dotenv.config();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
+app.set("trust proxy", process.env.TRUST_PROXY === "true" ? 1 : false);
+app.disable("x-powered-by");
+
+app.use((_req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  next();
+});
 
 // --- Logging ---
 function log(level, message, data = {}) {
@@ -17,7 +26,7 @@ function log(level, message, data = {}) {
     timestamp: new Date().toISOString(),
     level,
     message,
-    ...data,
+    data,
   };
   console[level === "error" ? "error" : "log"](JSON.stringify(entry));
 }
@@ -25,7 +34,7 @@ function log(level, message, data = {}) {
 // --- CORS ---
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim())
-  : undefined;
+  : false;
 
 app.use(
   cors({
@@ -34,7 +43,7 @@ app.use(
   }),
 );
 
-app.use(express.json());
+app.use(express.json({ limit: "10kb" }));
 
 // --- Supabase ---
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -56,7 +65,7 @@ const RATE_LIMIT = 30;
 const RATE_WINDOW_MS = 60_000;
 
 // Periodic cleanup to prevent memory leak
-setInterval(() => {
+const cleanupInterval = setInterval(() => {
   const now = Date.now();
   for (const [key, entry] of rateLimitStore) {
     if (now - entry.start > RATE_WINDOW_MS) {
@@ -66,11 +75,7 @@ setInterval(() => {
 }, RATE_WINDOW_MS);
 
 function getClientIp(req) {
-  const forwarded = req.headers["x-forwarded-for"];
-  if (typeof forwarded === "string" && forwarded.length > 0) {
-    return forwarded.split(",")[0].trim();
-  }
-  return req.ip || "unknown";
+  return req.ip || req.socket.remoteAddress || "unknown";
 }
 
 function isRateLimited(key) {
@@ -108,38 +113,42 @@ const ScoreSchema = z.object({
 
 // --- API Routes ---
 app.get("/api/health", (_req, res) => {
-  res.json({
-    status: "ok",
-    version: "0.8",
-    timestamp: new Date().toISOString(),
-    supabase: supabaseAdmin ? "connected" : "not configured",
-  });
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
 app.post("/api/score", async (req, res) => {
-  if (!supabaseAdmin) {
-    return res.status(500).json({ error: "Server not configured." });
+  try {
+    if (!supabaseAdmin) {
+      return res.status(500).json({ error: "Server not configured." });
+    }
+    const ip = getClientIp(req);
+    if (isRateLimited(ip)) {
+      log("warn", "Rate limited", { ip });
+      return res.status(429).json({ error: "Too many requests. Try again soon." });
+    }
+    const result = ScoreSchema.safeParse(req.body);
+    if (!result.success) {
+      return res.status(400).json({ error: "Invalid input." });
+    }
+    const { username, score } = result.data;
+    const { error } = await supabaseAdmin.rpc("upsert_high_score", {
+      p_username: username,
+      p_score: score,
+    });
+    if (error) {
+      log("error", "Score submission failed", { error: error.message });
+      return res.status(500).json({ error: "Unable to record score." });
+    }
+    log("info", "Score submitted", { username, score });
+    return res.status(200).json({ ok: true });
+  } catch (err) {
+    log("error", "Unexpected score submission error", { error: err.message });
+    return res.status(500).json({ error: "Internal server error." });
   }
-  const ip = getClientIp(req);
-  if (isRateLimited(ip)) {
-    log("warn", "Rate limited", { ip });
-    return res.status(429).json({ error: "Too many requests. Try again soon." });
-  }
-  const result = ScoreSchema.safeParse(req.body);
-  if (!result.success) {
-    return res.status(400).json({ error: "Invalid input." });
-  }
-  const { username, score } = result.data;
-  const { error } = await supabaseAdmin.rpc("upsert_high_score", {
-    p_username: username,
-    p_score: score,
-  });
-  if (error) {
-    log("error", "Score submission failed", { error: error.message });
-    return res.status(500).json({ error: "Unable to record score." });
-  }
-  log("info", "Score submitted", { username, score });
-  return res.status(200).json({ ok: true });
+});
+
+app.all("/api/*", (_req, res) => {
+  res.status(404).json({ error: "Not found." });
 });
 
 // --- Static Files (ONLY from public/) ---
@@ -150,13 +159,33 @@ app.get("*", (_req, res) => {
   res.sendFile(path.join(publicDir, "index.html"));
 });
 
+// eslint-disable-next-line no-unused-vars
+app.use((err, _req, res, _next) => {
+  log("error", "Unhandled error", { error: err.message });
+  res.status(500).json({ error: "Internal server error." });
+});
+
 // --- Server Start ---
 const port = process.env.PORT || 3000;
+let server;
 
 if (process.env.NODE_ENV !== "test") {
-  app.listen(port, () => {
+  server = app.listen(port, () => {
     log("info", "Server listening", { port });
   });
 }
+
+function shutdown() {
+  log("info", "Shutting down gracefully");
+  clearInterval(cleanupInterval);
+  if (server) {
+    server.close(() => process.exit(0));
+  } else {
+    process.exit(0);
+  }
+}
+
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);
 
 export default app;

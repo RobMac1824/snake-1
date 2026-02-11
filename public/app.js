@@ -260,25 +260,28 @@ function renderLeaderboard(rows) {
 async function loadLeaderboard() {
   if (!supabaseClient) {
     setLeaderboardStatus("SUPABASE NOT CONFIGURED");
-    return [];
+    return;
   }
 
-  const { data, error } = await supabaseClient
-    .from("leaderboard_scores")
-    .select("username, high_score")
-    .order("high_score", { ascending: false })
-    .limit(50);
+  try {
+    const { data, error } = await supabaseClient
+      .from("leaderboard_scores")
+      .select("username, high_score")
+      .order("high_score", { ascending: false })
+      .limit(50);
 
-  if (error) {
-    console.log("LEADERBOARD ERROR:", error);
-    setLeaderboardStatus(`UNABLE TO LOAD: ${error.message}`);
-    return [];
+    if (error) {
+      console.error("LEADERBOARD ERROR:", error);
+      setLeaderboardStatus(`UNABLE TO LOAD: ${error.message}`);
+      return;
+    }
+
+    setLeaderboardStatus("Top 50");
+    renderLeaderboard(data || []);
+  } catch (err) {
+    console.error("LEADERBOARD FETCH FAILED:", err);
+    setLeaderboardStatus("UNABLE TO LOAD");
   }
-
-  setLeaderboardStatus("Top 50");
-  const rows = data || [];
-  renderLeaderboard(rows);
-  return rows;
 }
 
 async function submitScoreViaSupabase(score) {
@@ -288,6 +291,10 @@ async function submitScoreViaSupabase(score) {
     }
 
     const FUNCTION_URL = supabaseUrl ? `${supabaseUrl}/functions/v1/dynamic-responder` : "";
+
+    if (!FUNCTION_URL) {
+      return { ok: false, message: "Supabase not configured" };
+    }
 
     const res = await fetch(FUNCTION_URL, {
       method: "POST",
@@ -348,11 +355,11 @@ async function submitScore(score) {
     });
     if (!response.ok) {
       let payload = null;
-      let rawText = "";
+      const rawText = await response.text();
       try {
-        payload = await response.json();
+        payload = JSON.parse(rawText);
       } catch {
-        rawText = await response.text().catch(() => "");
+        // response was not JSON
       }
       if (await trySupabaseFallback()) {
         return;
@@ -1082,13 +1089,17 @@ function drawSnake() {
     context.shadowColor = isHead ? "rgba(255, 79, 216, 0.6)" : "rgba(255, 180, 84, 0.3)";
     context.shadowBlur = isHead ? 14 : 8;
     context.beginPath();
-    context.roundRect(
-      segment.x * cellSize + 2,
-      segment.y * cellSize + 2,
-      cellSize - 4,
-      cellSize - 4,
-      8,
-    );
+    if (context.roundRect) {
+      context.roundRect(
+        segment.x * cellSize + 2,
+        segment.y * cellSize + 2,
+        cellSize - 4,
+        cellSize - 4,
+        8,
+      );
+    } else {
+      context.rect(segment.x * cellSize + 2, segment.y * cellSize + 2, cellSize - 4, cellSize - 4);
+    }
     context.fill();
   });
   context.shadowBlur = 0;
@@ -1301,8 +1312,10 @@ function bindButtons() {
       ArrowRight: { x: 1, y: 0 },
     };
     if (keyMap[event.key]) {
-      event.preventDefault();
-      applyDirection(keyMap[event.key]);
+      if (gameState && gameState.running) {
+        event.preventDefault();
+        applyDirection(keyMap[event.key]);
+      }
     }
     if (event.key === " ") {
       event.preventDefault();

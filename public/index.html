@@ -4,13 +4,22 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>EMBER RUN</title>
+    <meta
+      name="description"
+      content="Ember Run — a neon snake game. Ride the ember, collect Fire Orbs, and climb the global leaderboard."
+    />
+    <meta name="theme-color" content="#060610" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>"
+    />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <div class="app">
       <header class="hud">
         <div class="brand-block">
-          <div class="brand marquee">EMBER RUN</div>
+          <h1 class="brand marquee">EMBER RUN</h1>
           <div class="brand-subline station-line">WFM 98.8 FM — Lingo, Lingo</div>
         </div>
         <div class="top-actions">
@@ -94,8 +103,8 @@
             id="gameCanvas"
             width="360"
             height="360"
-            aria-label="Snake game"
-            role="img"
+            aria-label="Snake game — use arrow keys or swipe to steer"
+            role="application"
           ></canvas>
           <div
             class="toast"
@@ -185,7 +194,11 @@
         anonKey: "sb_publishable_PgxiGMNGhZxW342PKnyUwQ_2bjGRrfQ",
       };
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+      integrity="sha384-OLBgp1GsljhM2TJ+sbHjaiH9txEUvgdDTAzHv2P24donTt6/529l+9Ua0vFImLlb"
+      crossorigin="anonymous"
+    ></script>
     <script src="app.js"></script>
   </body>
 </html>
