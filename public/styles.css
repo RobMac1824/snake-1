@@ -66,14 +66,13 @@ body::after {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  background-image:
-    repeating-linear-gradient(
-      45deg,
-      rgba(255, 255, 255, 0.03) 0,
-      rgba(255, 255, 255, 0.03) 2px,
-      rgba(0, 0, 0, 0.02) 2px,
-      rgba(0, 0, 0, 0.02) 4px
-    );
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.03) 0,
+    rgba(255, 255, 255, 0.03) 2px,
+    rgba(0, 0, 0, 0.02) 2px,
+    rgba(0, 0, 0, 0.02) 4px
+  );
   mix-blend-mode: soft-light;
   opacity: 0.3;
   z-index: -1;
@@ -317,7 +316,9 @@ body::after {
   opacity: 0;
   transform: translateY(18px) scale(0.98);
   pointer-events: none;
-  transition: opacity 0.18s ease, transform 0.18s ease;
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
 }
 
 .screen.is-active {
@@ -358,7 +359,10 @@ button {
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    filter 0.15s ease;
 }
 
 button:active {
@@ -397,7 +401,9 @@ button:disabled {
   display: block;
   margin-top: 6px;
   touch-action: none;
-  box-shadow: 0 0 0 1px rgba(255, 79, 216, 0.15), 0 20px 40px rgba(5, 5, 20, 0.6);
+  box-shadow:
+    0 0 0 1px rgba(255, 79, 216, 0.15),
+    0 20px 40px rgba(5, 5, 20, 0.6);
 }
 
 #gameCanvas:focus-visible {
@@ -481,7 +487,9 @@ button {
     0 0 14px rgba(61, 231, 255, 0.2);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
 }
 
 .toast.is-active {
@@ -759,13 +767,12 @@ button {
   inset: 0;
   opacity: 0;
   pointer-events: none;
-  background-image:
-    repeating-linear-gradient(
-      130deg,
-      rgba(255, 255, 255, 0.05),
-      rgba(255, 255, 255, 0.02) 8px,
-      rgba(0, 0, 0, 0.03) 16px
-    );
+  background-image: repeating-linear-gradient(
+    130deg,
+    rgba(255, 255, 255, 0.05),
+    rgba(255, 255, 255, 0.02) 8px,
+    rgba(0, 0, 0, 0.03) 16px
+  );
   mix-blend-mode: screen;
   animation: storm-drift 1.4s linear infinite;
   transition: opacity 0.3s ease;
