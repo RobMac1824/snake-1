@@ -7,3 +7,22 @@ coverage/
 *.log
 .DS_Store
 Thumbs.db
+.env.production
+
+# Credentials & secrets
+credentials.json
+*.pem
+*.key
+*.cert
+*.p12
+*.pfx
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Backup / dump files
+*.bak
+*.sql
+*.dump
